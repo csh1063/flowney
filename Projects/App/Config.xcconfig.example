@@ -1,0 +1,9 @@
+// Config.xcconfig를 이 파일 복사해서 만들고 실제 값 채우기. Config.xcconfig는 gitignore됨.
+// 주의: xcconfig는 "//"를 주석 시작으로 해석하므로, SUPABASE_HOST에는 "https://" 없이
+// 호스트만 적을 것 (예: xxxx.supabase.co). "https://" 접두사는 코드에서 붙인다.
+
+GOOGLE_IOS_CLIENT_ID = REPLACE_ME.apps.googleusercontent.com
+GOOGLE_REVERSED_CLIENT_ID = com.googleusercontent.apps.REPLACE_ME
+GOOGLE_MAPS_API_KEY = REPLACE_ME
+SUPABASE_HOST = REPLACE_ME
+SUPABASE_ANON_KEY = REPLACE_ME
