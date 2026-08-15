@@ -12,32 +12,37 @@ public struct TripEditView: View {
 
     public var body: some View {
         NavigationStack {
-            Form {
-                Section("여행 이름") {
-                    TextField("예: 유럽 배낭여행", text: $store.name)
-                }
+            ScrollView {
+                VStack(alignment: .leading, spacing: WaypinSpacing.lg) {
+                    sectionBlock("여행 이름") {
+                        TextField("예: 유럽 배낭여행", text: $store.name)
+                    }
 
-                Section("여행 기간") {
-                    DatePicker("시작일", selection: $store.startDate, displayedComponents: .date)
-                    DatePicker("종료일", selection: $store.endDate, displayedComponents: .date)
-                }
-
-                Section("나라 선택") {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 90))], spacing: 8) {
-                        ForEach(CountryCatalog.all) { country in
-                            countryChip(country)
+                    sectionBlock("여행 기간") {
+                        VStack(spacing: WaypinSpacing.sm) {
+                            DatePicker("시작일", selection: $store.startDate, displayedComponents: .date)
+                            DatePicker("종료일", selection: $store.endDate, displayedComponents: .date)
                         }
                     }
-                    .padding(.vertical, 4)
-                }
 
-                if let errorMessage = store.errorMessage {
-                    Section {
+                    sectionBlock("나라 선택") {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 90))], spacing: WaypinSpacing.sm) {
+                            ForEach(CountryCatalog.all) { country in
+                                countryChip(country)
+                            }
+                        }
+                    }
+
+                    if let errorMessage = store.errorMessage {
                         Text(errorMessage)
-                            .foregroundStyle(.red)
+                            .font(WaypinFont.caption)
+                            .foregroundStyle(WaypinTheme.error)
+                            .waypinCard()
                     }
                 }
+                .padding(WaypinSpacing.lg)
             }
+            .background(WaypinTheme.background)
             .navigationTitle(store.isEditing ? "여행 수정" : "새 여행")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -58,19 +63,29 @@ public struct TripEditView: View {
         }
     }
 
+    private func sectionBlock<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: WaypinSpacing.sm) {
+            Text(title)
+                .font(WaypinFont.sectionHeader)
+                .foregroundStyle(WaypinTheme.textSecondary)
+            content()
+        }
+        .waypinCard()
+    }
+
     private func countryChip(_ country: CountryOption) -> some View {
         let isSelected = store.selectedCountryCodes.contains(country.code)
         return Button {
             store.send(.countryToggled(country.code))
         } label: {
             Text(country.name)
-                .font(.footnote)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
+                .font(WaypinFont.caption)
+                .padding(.horizontal, WaypinSpacing.sm)
+                .padding(.vertical, WaypinSpacing.xs)
                 .frame(maxWidth: .infinity)
-                .background(isSelected ? Color(hex: country.defaultColorHex) : Color.gray.opacity(0.15))
-                .foregroundStyle(isSelected ? .white : .primary)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .background(isSelected ? Color(hex: country.defaultColorHex) : WaypinTheme.divider)
+                .foregroundStyle(isSelected ? .white : WaypinTheme.textPrimary)
+                .clipShape(RoundedRectangle(cornerRadius: WaypinRadius.sm))
         }
         .buttonStyle(.plain)
     }

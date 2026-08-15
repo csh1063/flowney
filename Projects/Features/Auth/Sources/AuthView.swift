@@ -1,5 +1,6 @@
 import AuthenticationServices
 import ComposableArchitecture
+import DesignSystem
 import SwiftUI
 
 public struct AuthView: View {
@@ -61,7 +62,6 @@ public struct AuthView: View {
 
             Spacer()
         }
-        .onAppear { store.send(.onAppear) }
     }
 
     private func handleAppleCompletion(_ result: Result<ASAuthorization, any Error>) {

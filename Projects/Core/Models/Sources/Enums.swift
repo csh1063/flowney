@@ -32,6 +32,20 @@ public enum ItemType: String, Codable, Sendable, CaseIterable {
         case .other: return "기타"
         }
     }
+
+    public var icon: String {
+        switch self {
+        case .start: return "🚩"
+        case .sight: return "📍"
+        case .meal: return "🍽️"
+        case .lodge: return "🛏️"
+        case .transport: return "🚗"
+        case .activity: return "🎟️"
+        case .shopping: return "🛍️"
+        case .freeTime: return "☕️"
+        case .other: return "📌"
+        }
+    }
 }
 
 /// `itinerary_items.arrival_mode` — 이 항목에 "도착할 때" 사용한 교통수단.
@@ -46,6 +60,9 @@ public enum TransportMode: String, Codable, Sendable, CaseIterable {
     case funicular
     case car
     case boat
+    /// 산악 톱니바퀴 열차(융프라우요흐 구간 등) — 구글 Directions가 별도 vehicle type으로
+    /// 구분해주지 않아 실제 경로탐색 결과로는 절대 나오지 않고, 수동으로만 지정된다.
+    case cograil
 
     public var displayName: String {
         switch self {
@@ -59,6 +76,7 @@ public enum TransportMode: String, Codable, Sendable, CaseIterable {
         case .funicular: return "푸니쿨라"
         case .car: return "자동차"
         case .boat: return "선박"
+        case .cograil: return "산악톱니열차"
         }
     }
 
@@ -68,7 +86,7 @@ public enum TransportMode: String, Codable, Sendable, CaseIterable {
         switch self {
         case .start: return 300
         case .walk: return 1200
-        case .train: return 600
+        case .train, .cograil: return 600
         case .metro, .tram: return 800
         case .bus: return 1000
         case .gondola, .funicular: return 800

@@ -4,6 +4,7 @@ import DesignSystem
 import GoogleMaps
 import Models
 import SwiftUI
+import UIKit
 
 struct RouteMapView: UIViewRepresentable {
     let items: IdentifiedArrayOf<ItineraryItem>
@@ -24,8 +25,9 @@ struct RouteMapView: UIViewRepresentable {
     let onMarkerTapped: (ItineraryItem.ID) -> Void
 
     func makeUIView(context: Context) -> GMSMapView {
-        let camera = GMSCameraPosition.camera(withLatitude: 37.5665, longitude: 126.9780, zoom: 12)
-        let mapView = GMSMapView(frame: .zero, camera: camera)
+        let options = GMSMapViewOptions()
+        options.camera = GMSCameraPosition.camera(withLatitude: 37.5665, longitude: 126.9780, zoom: 12)
+        let mapView = GMSMapView(options: options)
         mapView.delegate = context.coordinator
         context.coordinator.mapView = mapView
         context.coordinator.onMarkerTapped = onMarkerTapped
@@ -35,6 +37,7 @@ struct RouteMapView: UIViewRepresentable {
 
     func updateUIView(_ mapView: GMSMapView, context: Context) {
         context.coordinator.onMarkerTapped = onMarkerTapped
+        context.coordinator.applyMapStyle(colorScheme: context.environment.colorScheme)
         context.coordinator.update(
             items: items,
             legs: legs,
@@ -52,10 +55,51 @@ struct RouteMapView: UIViewRepresentable {
     }
 
     @MainActor
-    final class Coordinator: NSObject, GMSMapViewDelegate {
+    final class Coordinator: NSObject, @preconcurrency GMSMapViewDelegate {
         var mapView: GMSMapView?
         var engine: TravelerAnimationEngine?
         var onMarkerTapped: ((ItineraryItem.ID) -> Void)?
+
+        /// 구글맵 SDK는 iOS 시스템 다크모드를 자동으로 안 따라간다 — 매번 스타일을 다시
+        /// 만들 필요 없게 마지막으로 적용한 모드를 기억해뒀다가 바뀔 때만 갈아끼운다.
+        private var lastAppliedColorScheme: ColorScheme?
+
+        func applyMapStyle(colorScheme: ColorScheme) {
+            guard colorScheme != lastAppliedColorScheme else { return }
+            lastAppliedColorScheme = colorScheme
+            mapView?.mapStyle = colorScheme == .dark ? try? GMSMapStyle(jsonString: Self.darkMapStyleJSON) : nil
+        }
+
+        private static let darkMapStyleJSON = """
+        [
+          {"elementType": "geometry", "stylers": [{"color": "#242f3e"}]},
+          {"elementType": "labels.icon", "stylers": [{"visibility": "off"}]},
+          {"elementType": "labels.text.fill", "stylers": [{"color": "#746855"}]},
+          {"elementType": "labels.text.stroke", "stylers": [{"color": "#242f3e"}]},
+          {"featureType": "administrative", "elementType": "geometry", "stylers": [{"color": "#4b6878"}]},
+          {"featureType": "administrative.country", "elementType": "labels.text.fill", "stylers": [{"color": "#a2b6c3"}]},
+          {"featureType": "administrative.land_parcel", "stylers": [{"visibility": "off"}]},
+          {"featureType": "administrative.locality", "elementType": "labels.text.fill", "stylers": [{"color": "#d59563"}]},
+          {"featureType": "poi", "elementType": "labels.text.fill", "stylers": [{"color": "#d59563"}]},
+          {"featureType": "poi.park", "elementType": "geometry", "stylers": [{"color": "#263c3f"}]},
+          {"featureType": "poi.park", "elementType": "labels.text.fill", "stylers": [{"color": "#6b9a76"}]},
+          {"featureType": "poi.park", "elementType": "labels.text.stroke", "stylers": [{"color": "#1c2a2c"}]},
+          {"featureType": "road", "elementType": "geometry", "stylers": [{"color": "#38414e"}]},
+          {"featureType": "road", "elementType": "geometry.stroke", "stylers": [{"color": "#212a37"}]},
+          {"featureType": "road", "elementType": "labels.text.fill", "stylers": [{"color": "#9ca5b3"}]},
+          {"featureType": "road.arterial", "elementType": "geometry", "stylers": [{"color": "#38414e"}]},
+          {"featureType": "road.highway", "elementType": "geometry", "stylers": [{"color": "#746855"}]},
+          {"featureType": "road.highway", "elementType": "geometry.stroke", "stylers": [{"color": "#1f2835"}]},
+          {"featureType": "road.highway", "elementType": "labels.text.fill", "stylers": [{"color": "#f3d19c"}]},
+          {"featureType": "road.highway.controlled_access", "elementType": "geometry", "stylers": [{"color": "#8a6f52"}]},
+          {"featureType": "road.local", "elementType": "labels.text.fill", "stylers": [{"color": "#7d8792"}]},
+          {"featureType": "transit", "elementType": "geometry", "stylers": [{"color": "#2f3948"}]},
+          {"featureType": "transit.station", "elementType": "labels.text.fill", "stylers": [{"color": "#d59563"}]},
+          {"featureType": "water", "elementType": "geometry", "stylers": [{"color": "#17263c"}]},
+          {"featureType": "water", "elementType": "labels.text.fill", "stylers": [{"color": "#515c6d"}]},
+          {"featureType": "water", "elementType": "labels.text.stroke", "stylers": [{"color": "#17263c"}]}
+        ]
+        """
 
         private var drawnKey = ""
         private var lastAnimateTrigger: Int?
@@ -113,7 +157,7 @@ struct RouteMapView: UIViewRepresentable {
                 redraw(items: items, legs: legs, mapView: mapView, bottomInset: bottomInset)
             }
 
-            updateMarkerStyles(currentStopIndex: currentStopIndex)
+            updateMarkerStyles(currentStopIndex: currentStopIndex, items: items)
 
             // 두 트리거는 서로 독립적으로 바뀔 수 있으니 각각 따로 감지한다. 초기값이 둘 다
             // nil이라 첫 update()에서 0과 비교해 우연히 애니메이션이 발동하지 않도록, 최초
@@ -138,23 +182,69 @@ struct RouteMapView: UIViewRepresentable {
         }
 
         // html의 updateMarkerStates() 이식 — 지난 장소는 흐리게, 현재 장소는 파란 핀으로.
-        private func updateMarkerStyles(currentStopIndex: Int?) {
+        // 일정 종류별 핀 색(`redraw`에서 이미 지정)은 유지하고, "지금 위치"만 파란색으로
+        // 덮어쓴다 — 예전엔 무조건 `nil`(기본 빨간 핀)로 되돌려서 타입 색이 사라졌었다.
+        private func updateMarkerStyles(currentStopIndex: Int?, items: IdentifiedArrayOf<ItineraryItem>) {
             for (index, marker) in markers.enumerated() {
+                let itemType = items.indices.contains(index) ? items[index].itemType : nil
                 guard let currentStopIndex else {
                     marker.opacity = 1
-                    marker.icon = nil
+                    if let itemType { marker.icon = Self.markerImage(for: itemType) }
                     continue
                 }
                 if index < currentStopIndex {
                     marker.opacity = 0.45
-                    marker.icon = nil
+                    if let itemType { marker.icon = Self.markerImage(for: itemType) }
                 } else if index == currentStopIndex {
                     marker.opacity = 1
-                    marker.icon = GMSMarker.markerImage(with: .systemBlue)
+                    if let itemType { marker.icon = Self.markerImage(for: itemType, isCurrent: true) }
                 } else {
                     marker.opacity = 1
-                    marker.icon = nil
+                    if let itemType { marker.icon = Self.markerImage(for: itemType) }
                 }
+            }
+        }
+
+        private static func pinColor(for itemType: ItemType) -> UIColor {
+            switch itemType {
+            case .start: return WaypinTheme.brandNavyUIColor
+            case .sight: return UIColor(hex: "#2F8F5B")
+            case .meal: return UIColor(hex: "#F5A623")
+            case .lodge: return WaypinTheme.brandGoldUIColor
+            case .transport: return UIColor(hex: "#0072CE")
+            case .activity: return UIColor(hex: "#8E44AD")
+            case .shopping: return UIColor(hex: "#E85D9A")
+            case .freeTime: return UIColor(hex: "#20B2AA")
+            case .other: return .systemGray
+            }
+        }
+
+        /// 일정 종류 이모지를 원형 배지 안에 넣은 커스텀 핀 — 그냥 색만 다른 기본 물방울
+        /// 핀보다 지도에서 한눈에 어떤 종류인지 알아보기 쉽다. "현재 위치"는 살짝 크고
+        /// 테두리가 파란색인 버전으로 구분한다.
+        private static func markerImage(for itemType: ItemType, isCurrent: Bool = false) -> UIImage {
+            let diameter: CGFloat = isCurrent ? 40 : 32
+            let renderer = UIGraphicsImageRenderer(size: CGSize(width: diameter, height: diameter))
+            return renderer.image { _ in
+                let rect = CGRect(x: 0, y: 0, width: diameter, height: diameter).insetBy(dx: 2, dy: 2)
+                let path = UIBezierPath(ovalIn: rect)
+                pinColor(for: itemType).setFill()
+                path.fill()
+
+                path.lineWidth = isCurrent ? 3 : 2
+                (isCurrent ? UIColor.systemBlue : UIColor.white).setStroke()
+                path.stroke()
+
+                let emoji = itemType.icon as NSString
+                let font = UIFont.systemFont(ofSize: isCurrent ? 18 : 15)
+                let textSize = emoji.size(withAttributes: [.font: font])
+                let textRect = CGRect(
+                    x: (diameter - textSize.width) / 2,
+                    y: (diameter - textSize.height) / 2,
+                    width: textSize.width,
+                    height: textSize.height
+                )
+                emoji.draw(in: textRect, withAttributes: [.font: font])
             }
         }
 
@@ -278,6 +368,11 @@ struct RouteMapView: UIViewRepresentable {
                 let marker = GMSMarker(position: position)
                 marker.title = "\(index + 1). \(item.name)"
                 marker.userData = item.id
+                marker.icon = Self.markerImage(for: item.itemType)
+                // 커스텀 아이콘은 기본 물방울 핀과 달리 뾰족한 끝이 없는 원형이라, 좌표가
+                // 원 중앙에 오도록 앵커를 중앙으로 맞춘다(기본값 (0.5, 1.0)은 물방울 핀의
+                // 뾰족한 아래끝 기준).
+                marker.groundAnchor = CGPoint(x: 0.5, y: 0.5)
                 marker.map = mapView
                 markers.append(marker)
             }
@@ -304,17 +399,20 @@ struct RouteMapView: UIViewRepresentable {
                 // 수단이 바뀌는 지점(환승)에는 작은 점 마커도 찍는다. 그 외(걷기/차 단일 모드,
                 // steps 없음, 직선)는 통짜 폴리라인 하나.
                 let segments: [LegPolylineSegment]
-                if hasRealRoute, let leg, Self.isTransitVehicleMode(leg.mode), !leg.steps.isEmpty {
+                if let leg, RoutePathDecoding.usesSteppedRendering(leg: leg, hasRealRoute: hasRealRoute) {
                     segments = drawSteppedPolylines(for: leg, mapView: mapView)
                 } else {
-                    let path: GMSMutablePath
-                    if let polylineString = leg?.polyline, hasRealRoute, let decoded = GMSPath(fromEncodedPath: polylineString), decoded.count() > 0 {
-                        path = GMSMutablePath(path: decoded)
-                    } else {
-                        path = GMSMutablePath()
-                        path.add(CLLocationCoordinate2D(latitude: fLat, longitude: fLng))
-                        path.add(CLLocationCoordinate2D(latitude: tLat, longitude: tLng))
-                    }
+                    // 애니메이션(TravelerAnimationEngine)과 정확히 같은 좌표를 써야 캐릭터가
+                    // 선을 벗어나지 않는다 — 도보/자동차도 steps는 내려오지만 여긴 stepped
+                    // 렌더링 대상이 아니므로 overview polyline만 쓴다(RoutePathDecoding 참고).
+                    let decodedPoints = RoutePathDecoding.singlePolylinePoints(
+                        leg: leg,
+                        hasRealRoute: hasRealRoute,
+                        from: CLLocationCoordinate2D(latitude: fLat, longitude: fLng),
+                        to: CLLocationCoordinate2D(latitude: tLat, longitude: tLng)
+                    )
+                    let path = GMSMutablePath()
+                    for point in decodedPoints { path.add(point) }
 
                     let mode = leg?.mode ?? .walk
                     let isWalkMode = mode == .walk
@@ -351,13 +449,6 @@ struct RouteMapView: UIViewRepresentable {
             }
 
             fitAll(items: items, mapView: mapView, bottomInset: bottomInset)
-        }
-
-        private static func isTransitVehicleMode(_ mode: TransportMode) -> Bool {
-            switch mode {
-            case .tram, .metro, .train, .bus, .gondola, .funicular, .boat: return true
-            case .walk, .car, .start: return false
-            }
         }
 
         // leg 하나를 step 단위로 나눠서, 실제 탄 구간(TRANSIT)은 노선색(또는 이동수단 기본색),
@@ -439,8 +530,8 @@ struct RouteMapView: UIViewRepresentable {
             }
         }
 
-        private static let transitStrokeWidth: CGFloat = 12
-        private static let walkStrokeWidth: CGFloat = 8
+        private static let transitStrokeWidth: CGFloat = 10
+        private static let walkStrokeWidth: CGFloat = 6
         /// 기본(아직 안 지나간) 상태 굵기 — 모드 상관없이 다 이 굵기의 옅은 회색 점선으로
         /// 통일해서 평소엔 지도가 복잡해 보이지 않게 한다.
         private static let mutedStrokeWidth: CGFloat = 4
@@ -455,7 +546,7 @@ struct RouteMapView: UIViewRepresentable {
         // (SIGKILL) 문제가 있었으므로, 그 경우에만 거리에 비례해서 대시 개수를 제한한다.
         private static let maxDashSpanCount = 200.0
 
-        /// 아직 지나가지 않은(또는 다시 점선으로 되돌아간) 기본 상태 — 옅은 회색 점선.
+        /// 아직 지나가지 않은(또는 다시 점선으로 되돌아간) 기본 상태 — 도보색과 같은 점선.
         private func setMuted(_ segment: LegPolylineSegment) {
             segment.polyline.strokeWidth = Self.mutedStrokeWidth
             segment.polyline.strokeColor = Self.paletteColor(.walk)
@@ -545,7 +636,8 @@ struct RouteMapView: UIViewRepresentable {
 
         private static func paletteColor(_ mode: TransportMode) -> UIColor {
             switch mode {
-            case .walk: return UIColor(hex: "#8E8E93")
+            // 앱 브랜드 네이비와 통일 — 무채색(setMuted) 표시도 이 값을 그대로 재사용한다.
+            case .walk: return WaypinTheme.brandNavyUIColor
             case .metro: return UIColor(hex: "#0072CE")
             case .tram: return UIColor(hex: "#00A651")
             case .bus: return UIColor(hex: "#F5A623")
@@ -553,6 +645,7 @@ struct RouteMapView: UIViewRepresentable {
             case .funicular: return UIColor(hex: "#8B572A")
             case .gondola: return UIColor(hex: "#17A2B8")
             case .boat: return UIColor(hex: "#20B2AA")
+            case .cograil: return UIColor(hex: "#6B4E9E")
             case .car, .start: return .systemGray
             }
         }
@@ -567,6 +660,7 @@ struct RouteMapView: UIViewRepresentable {
         // 간격을 매 프레임 다시 계산하는 성능 부담 없이 줌 변화에 맞춰 갱신한다.
         func mapView(_ mapView: GMSMapView, idleAt position: GMSCameraPosition) {
             refreshMutedDashLengths(zoom: position.zoom)
+            engine?.cameraDidBecomeIdle()
         }
     }
 }

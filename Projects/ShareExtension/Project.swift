@@ -15,7 +15,7 @@ let project = Project(
                     "CFBundleDisplayName": "Waypin에 추가",
                     "NSExtension": [
                         "NSExtensionPointIdentifier": "com.apple.share-services",
-                        "NSExtensionPrincipalClass": "ShareViewController",
+                        "NSExtensionPrincipalClass": "$(PRODUCT_MODULE_NAME).ShareViewController",
                         "NSExtensionAttributes": [
                             "NSExtensionActivationRule": [
                                 "NSExtensionActivationSupportsWebURLWithMaxCount": 1,
@@ -27,7 +27,9 @@ let project = Project(
             ),
             sources: ["Sources/**"],
             entitlements: .file(path: "WaypinShareExtension.entitlements"),
-            dependencies: [],
+            dependencies: [
+                WaypinModule.designSystem.dependency,
+            ],
             settings: .settings(
                 base: [
                     "DEVELOPMENT_TEAM": .string(Constants.developmentTeam),

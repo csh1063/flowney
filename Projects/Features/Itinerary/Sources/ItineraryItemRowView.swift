@@ -1,3 +1,4 @@
+import DesignSystem
 import Models
 import SwiftUI
 
@@ -5,15 +6,15 @@ struct ItineraryItemRowView: View {
     let item: ItineraryItem
 
     var body: some View {
-        HStack(spacing: 12) {
-            Text(iconForType)
+        HStack(spacing: WaypinSpacing.md) {
+            Text(item.itemType.icon)
                 .font(.title2)
                 .frame(width: 32)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: WaypinSpacing.xs / 2) {
                 Text(item.name)
-                    .font(.body.weight(.medium))
-                HStack(spacing: 6) {
+                    .font(WaypinFont.bodyEmphasis)
+                HStack(spacing: WaypinSpacing.xs + 2) {
                     if let startTime = item.startTime {
                         Text(startTime.prefix(5))
                     }
@@ -24,32 +25,19 @@ struct ItineraryItemRowView: View {
                         Text("장소 미정")
                     }
                 }
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(WaypinFont.caption)
+                .foregroundStyle(WaypinTheme.textSecondary)
             }
 
             Spacer()
 
             if let amount = item.costAmount {
-                Text("\(amount)\(item.costCurrency ?? "")")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                let priceText: String = "\(amount)\(item.costCurrency ?? "")"
+                Text(priceText)
+                    .font(WaypinFont.caption)
+                    .foregroundStyle(WaypinTheme.textSecondary)
             }
         }
-        .padding(.vertical, 4)
-    }
-
-    private var iconForType: String {
-        switch item.itemType {
-        case .start: return "🚩"
-        case .sight: return "📍"
-        case .meal: return "🍽️"
-        case .lodge: return "🛏️"
-        case .transport: return "🚗"
-        case .activity: return "🎟️"
-        case .shopping: return "🛍️"
-        case .freeTime: return "☕️"
-        case .other: return "📌"
-        }
+        .padding(.vertical, WaypinSpacing.xs)
     }
 }

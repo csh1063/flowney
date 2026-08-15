@@ -40,10 +40,7 @@ let project = Project(
                 .external(name: "GoogleSignIn"),
                 .external(name: "GoogleSignInSwift"),
                 .external(name: "GoogleMaps"),
-                // 실기기 테스트 위해 임시로 뺌: WaypinShareExtension이 미등록 App Group
-                // 권한(group.com.baci.waypin)을 요구해서 실기기 코드사이닝을 깨뜨릴 수 있음.
-                // 실제 App Group을 Apple Developer 계정에 등록한 뒤 다시 추가할 것.
-                // .project(target: "WaypinShareExtension", path: .relativeToRoot("Projects/ShareExtension")),
+                .project(target: "WaypinShareExtension", path: .relativeToRoot("Projects/ShareExtension")),
             ],
             settings: .settings(
                 base: [

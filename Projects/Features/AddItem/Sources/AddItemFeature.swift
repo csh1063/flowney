@@ -62,6 +62,9 @@ public struct AddItemFeature {
         case saveButtonTapped
         case cancelButtonTapped
         case saveResponse(Result<ItineraryItem, any Error>)
+        // 마법사 헤더에서 여행/날짜를 다시 골랐을 때 — 이미 입력해둔 값(이름/메모/비용 등)은
+        // 그대로 두고 붙일 대상만 갈아끼운다.
+        case contextChanged(tripID: Trip.ID, dayID: TripDay.ID, startingSortOrder: Int)
         case delegate(Delegate)
 
         public enum Delegate {
@@ -180,6 +183,12 @@ public struct AddItemFeature {
 
             case .cancelButtonTapped:
                 return .send(.delegate(.cancelled))
+
+            case let .contextChanged(tripID, dayID, startingSortOrder):
+                state.tripID = tripID
+                state.dayID = dayID
+                state.startingSortOrder = startingSortOrder
+                return .none
 
             case .delegate:
                 return .none

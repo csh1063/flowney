@@ -6,6 +6,7 @@ import Supabase
 @DependencyClient
 public struct TripsRepository: Sendable {
     public var fetchTrips: @Sendable () async throws -> [Trip]
+    public var fetchTrip: @Sendable (_ id: Trip.ID) async throws -> Trip
     public var createTrip: @Sendable (_ trip: Trip) async throws -> Trip
     public var updateTrip: @Sendable (_ trip: Trip) async throws -> Trip
     public var deleteTrip: @Sendable (_ id: Trip.ID) async throws -> Void
@@ -27,6 +28,15 @@ extension TripsRepository: DependencyKey {
                     .from("trips")
                     .select()
                     .order("start_date", ascending: true)
+                    .execute()
+                    .value
+            },
+            fetchTrip: { id in
+                try await client
+                    .from("trips")
+                    .select()
+                    .eq("id", value: id)
+                    .single()
                     .execute()
                     .value
             },

@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import DesignSystem
 import Models
 import SwiftUI
 import TripEdit
@@ -14,6 +15,9 @@ public struct TripListView: View {
     // 화면 전환은 부모(RootView)가 NavigationStack(path:)로 관리하므로, 탭 이벤트만 콜백으로
     // 위로 전달한다.
     let onTripSelected: (Trip) -> Void
+    // 디자인 시스템 카탈로그를 실기기에서 바로 확인할 수 있게 만든 임시 진입점 —
+    // 확인 끝나면 이 버튼과 상태는 제거해도 된다.
+    @State private var showDesignSystemCatalog = false
 
     public init(store: StoreOf<TripListFeature>, onTripSelected: @escaping (Trip) -> Void) {
         self.store = store
@@ -24,6 +28,7 @@ public struct TripListView: View {
         Group {
             if store.trips.isEmpty && store.isLoading {
                 ProgressView("불러오는 중…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if store.trips.isEmpty {
                 ContentUnavailableView {
                     Label("등록된 여행이 없어요", systemImage: "airplane")
@@ -41,19 +46,37 @@ public struct TripListView: View {
                 }
             } else {
                 List {
+                    Button {
+                        editStore = Store(initialState: TripEditFeature.State()) {
+                            TripEditFeature()
+                        }
+                    } label: {
+                        Label("여행 추가하기", systemImage: "plus.circle.fill")
+                            .font(WaypinFont.bodyEmphasis)
+                            .foregroundStyle(WaypinTheme.accent)
+                            .waypinCard()
+                    }
+                    .buttonStyle(.plain)
+                    .waypinCardListRow()
+
                     ForEach(store.trips) { trip in
                         Button {
                             onTripSelected(trip)
                         } label: {
-                            TripRowView(trip: trip)
+                            TripSummaryRowView(trip: trip)
                         }
                         .buttonStyle(.plain)
+                        .waypinCardListRow()
                     }
                     .onDelete { store.send(.deleteTrip($0)) }
                 }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
             }
         }
-        .navigationTitle("내 여행")
+        .background(WaypinTheme.background)
+        .navigationTitle("여행 목록")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
@@ -64,8 +87,26 @@ public struct TripListView: View {
                     Image(systemName: "plus")
                 }
             }
+            // 임시: 디자인 시스템 카탈로그 확인용.
+            ToolbarItem(placement: .secondaryAction) {
+                Button {
+                    showDesignSystemCatalog = true
+                } label: {
+                    Image(systemName: "paintpalette")
+                }
+            }
         }
         .onAppear { store.send(.onAppear) }
+        .sheet(isPresented: $showDesignSystemCatalog) {
+            NavigationStack {
+                DesignSystemCatalogView()
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("닫기") { showDesignSystemCatalog = false }
+                        }
+                    }
+            }
+        }
         .sheet(
             isPresented: Binding(
                 get: { editStore != nil },

@@ -1,85 +1,157 @@
 import AddItem
 import ComposableArchitecture
+import DesignSystem
 import Models
 import SwiftUI
 
 public struct ItineraryView: View {
     @Bindable var store: StoreOf<ItineraryFeature>
-    // `@Presents`/`ifLet` 대신 이 View가 직접 AddItemFeature Store를 소유한다
+    // `@Presents`/`ifLet` 대신 이 View가 직접 AddItemFlowFeature Store를 소유한다
     // (TripListView와 동일한 이유·패턴).
-    @State private var addItemStore: StoreOf<AddItemFeature>?
-    // 리스트 시트는 두 단계(약 3.5줄 / 약 1.5줄)로만 오간다. 어느 단계인지에 따라 지도가
-    // 실제로 "보이는" 영역이 달라지므로, 카메라를 맞출 때 이 높이만큼 아래쪽을 더 띄운다.
+    @State private var addItemFlowStore: StoreOf<AddItemFlowFeature>?
+    // 리스트는 기존 그대로 시스템 `.sheet`다 — 창(window) 레벨 모달이라 뜨는 순간 탭바 위로
+    // 자연스럽게 올라와서 가려준다(탭바를 따로 숨기는 코드가 필요 없음). 예전엔 화면 진입시
+    // 항상 열려 있었는데, 이제는 기본이 닫힘이고 "위로" 버튼을 눌러야만 뜬다.
+    @State private var isListSheetPresented = false
+    // 리스트 시트는 두 단계(약 3.5줄 / 약 1.5줄)로만 오간다.
     @State private var sheetDetent: PresentationDetent = .height(expandedListHeight)
-    // 화면 전환은 부모(RootView)가 NavigationStack(path:)로 관리하므로, 요청만 콜백으로
-    // 위로 전달한다. 경로 탐색은 더 이상 별도 화면이 아니라 이 화면 안의 액션이라
-    // 콜백이 필요 없다.
-    let onBudgetRequested: (Trip) -> Void
+    // 지도 탭이 상시 화면이 되면서, 여행이 아직 안 골라졌을 때 "여행 불러오기"를 어떻게
+    // 띄울지는 이 화면을 담고 있는 쪽(RootView)만 안다 — 그쪽 시트를 열어달라는 요청만
+    // 콜백으로 위로 전달한다.
+    let onTripListRequested: () -> Void
 
     private let dayColumnWidth: CGFloat = 64
     private static let expandedListHeight: CGFloat = 220
     private static let collapsedListHeight: CGFloat = 120
 
-    public init(
-        store: StoreOf<ItineraryFeature>,
-        onBudgetRequested: @escaping (Trip) -> Void
-    ) {
+    public init(store: StoreOf<ItineraryFeature>, onTripListRequested: @escaping () -> Void) {
         self.store = store
-        self.onBudgetRequested = onBudgetRequested
+        self.onTripListRequested = onTripListRequested
     }
 
+    // 시트가 닫혀있으면 0(지도가 화면 전체를 씀), 열려있으면 두 단계 중 하나.
     private var currentListHeight: CGFloat {
-        sheetDetent == .height(Self.collapsedListHeight) ? Self.collapsedListHeight : Self.expandedListHeight
+        guard isListSheetPresented else { return 0 }
+        return sheetDetent == .height(Self.collapsedListHeight) ? Self.collapsedListHeight : Self.expandedListHeight
     }
 
+    // 지도 탭은 상시 화면이라, 여행 유무와 무관하게 `RouteMapView`(네이티브 `GMSMapView` 래퍼)를
+    // 이 body 하나에서만 만든다. 예전엔 "여행 없음"/"여행 로드됨"이 완전히 다른 서브트리
+    // (emptyState/loadedContent)라 각자 RouteMapView를 따로 갖고 있었는데, SwiftUI가 그 둘을
+    // 다른 뷰로 취급해서 여행을 처음 고르는 순간 네이티브 지도 뷰가 통째로 파괴되고 새로
+    // 만들어졌다 — Maps SDK가 콘솔에 "Multiple instances of CCTClearcutUploader" 경고를 내는
+    // 원인이었다. 지금은 위에 얹는 UI(버튼 vs 헤더/컨트롤바)만 조건부로 바뀌고, 지도 자체는
+    // 파라미터만 갈아끼우며 하나로 계속 산다.
     public var body: some View {
-        VStack(spacing: 0) {
-            headerSection
-            mapSection
-        }
-        .navigationTitle(store.trip.name)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    store.send(.addItemButtonTapped)
-                } label: {
-                    Image(systemName: "plus")
-                }
+        ZStack(alignment: .top) {
+            mapLayer
+
+            if store.trip != nil {
+                headerSection
+            } else {
+                loadTripButton
             }
-            ToolbarItem(placement: .secondaryAction) {
-                Button {
-                    store.send(.searchAllRoutesButtonTapped)
-                } label: {
-                    if store.isSearchingAllRoutes {
-                        ProgressView()
-                    } else {
-                        Label("경로 탐색", systemImage: "point.topleft.down.curvedto.point.bottomright.up")
+
+            if store.trip != nil, let errorMessage = store.errorMessage {
+                errorBanner(errorMessage)
+            }
+
+            if store.trip != nil {
+                controlBar
+                    .padding(.trailing, 16)
+                    .padding(.bottom, currentListHeight + 16)
+                    .animation(.easeInOut(duration: 0.25), value: currentListHeight)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+            }
+        }
+        .waypinLeadingTitle(store.trip?.name ?? "Waypin")
+        .toolbar {
+            if store.trip != nil {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        store.send(.addItemButtonTapped)
+                    } label: {
+                        Image(systemName: "plus")
                     }
                 }
-                .disabled(store.isSearchingAllRoutes)
-            }
-            ToolbarItem(placement: .secondaryAction) {
-                Button {
-                    onBudgetRequested(store.trip)
-                } label: {
-                    Label("요금표", systemImage: "wonsign.circle")
+                ToolbarItem(placement: .secondaryAction) {
+                    Button {
+                        store.send(.searchAllRoutesButtonTapped)
+                    } label: {
+                        if store.isSearchingAllRoutes {
+                            ProgressView()
+                        } else {
+                            Label("전체 경로 탐색", systemImage: "point.topleft.down.curvedto.point.bottomright.up")
+                        }
+                    }
+                    .disabled(store.isSearchingAllRoutes)
+                }
+                ToolbarItem(placement: .secondaryAction) {
+                    Button {
+                        onTripListRequested()
+                    } label: {
+                        Label("여행 목록", systemImage: "list.bullet")
+                    }
                 }
             }
         }
-        .onAppear { store.send(.onAppear) }
-        .onChange(of: store.addItemRequest) { _, request in
+        .onAppear {
+            store.send(.onAppear)
+        }
+        .onChange(of: store.addItemFlowRequest) { _, request in
             guard let request else { return }
-            addItemStore = Store(initialState: request) { AddItemFeature() }
+            addItemFlowStore = Store(initialState: request) { AddItemFlowFeature() }
             store.send(.addItemRequestConsumed)
         }
-        .sheet(isPresented: .constant(true)) {
-            itemListSheet
+        .sheet(isPresented: $isListSheetPresented) {
+            itemListContent
                 .presentationDetents([.height(Self.collapsedListHeight), .height(Self.expandedListHeight)], selection: $sheetDetent)
                 .presentationDragIndicator(.visible)
                 .presentationBackgroundInteraction(.enabled)
                 .interactiveDismissDisabled()
         }
+    }
+
+    private var mapLayer: some View {
+        RouteMapView(
+            items: store.trip != nil ? store.selectedItems : [],
+            legs: store.trip != nil ? store.selectedDayLegs : [],
+            currentStopIndex: store.trip != nil ? store.currentStopIndex : nil,
+            animateTrigger: store.animateTrigger,
+            jumpTrigger: store.jumpTrigger,
+            focusedItemID: store.trip != nil ? store.selectedItemID : nil,
+            bottomInset: store.trip != nil ? currentListHeight : 0,
+            onAnimationCompleted: { store.send(.legAnimationCompleted) },
+            onMarkerTapped: { store.send(.selectStopTapped($0)) }
+        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea(edges: .bottom)
+    }
+
+    private var loadTripButton: some View {
+        Button {
+            onTripListRequested()
+        } label: {
+            Label("여행 불러오기", systemImage: "airplane")
+        }
+        .buttonStyle(.waypinPrimary)
+        .padding(.horizontal, WaypinSpacing.xxl)
+        .padding(.vertical, WaypinSpacing.md)
+        .background(WaypinTheme.background)
+    }
+
+    private func errorBanner(_ message: String) -> some View {
+        VStack(spacing: 8) {
+            Label("문제가 발생했어요", systemImage: "exclamationmark.triangle")
+            Text(message)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding()
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     // MARK: - 국가 띠 + 날짜탭 + 날씨 바
@@ -112,7 +184,11 @@ public struct ItineraryView: View {
                     }
                 }
             }
-            .padding(.horizontal)
+            // 예전엔 `.padding(.horizontal)`을 ScrollView 자체에 걸어서, 뷰포트 너비 자체가
+            // 화면보다 좁아졌었다 — 그러면 스크롤해서 셀이 지나갈 때도 항상 화면 양끝에
+            // 여백이 낀 채로만 보인다. 뷰포트는 화면 끝까지 꽉 채우고, 맨 처음/맨 끝
+            // 콘텐츠에만 여백이 남도록 컨텐츠 마진으로 바꾼다.
+            .contentMargins(.horizontal, 16, for: .scrollContent)
             .padding(.top, 8)
 
             // 응답 오기 전에는 빈 칸(공백 한 칸)을 같은 폰트로 깔아둬서, 나중에 텍스트가
@@ -122,6 +198,7 @@ public struct ItineraryView: View {
                 .foregroundStyle(.secondary)
                 .padding(.bottom, 4)
         }
+        .background(WaypinTheme.background)
     }
 
     private func weatherSummary(_ weather: DayWeather) -> String {
@@ -132,47 +209,9 @@ public struct ItineraryView: View {
         return text
     }
 
-    // MARK: - 지도 + 이전/다음 버튼
+    // MARK: - 이전/위로(아래로)/다음 버튼
 
-    private var mapSection: some View {
-        ZStack(alignment: .bottomTrailing) {
-            RouteMapView(
-                items: store.selectedItems,
-                legs: store.selectedDayLegs,
-                currentStopIndex: store.currentStopIndex,
-                animateTrigger: store.animateTrigger,
-                jumpTrigger: store.jumpTrigger,
-                focusedItemID: store.selectedItemID,
-                bottomInset: currentListHeight,
-                onAnimationCompleted: { store.send(.legAnimationCompleted) },
-                onMarkerTapped: { store.send(.selectStopTapped($0)) }
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .ignoresSafeArea(edges: .bottom)
-
-            if let errorMessage = store.errorMessage {
-                VStack(spacing: 8) {
-                    Label("문제가 발생했어요", systemImage: "exclamationmark.triangle")
-                    Text(errorMessage)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .padding()
-                .background(.regularMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .padding()
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            }
-
-            // 시트 높이가 바뀌면(3.5줄 ↔ 1.5줄) 버튼도 그 위에 딱 붙어서 같이 움직인다.
-            prevNextControls
-                .padding(.trailing, 16)
-                .padding(.bottom, currentListHeight + 16)
-                .animation(.easeInOut(duration: 0.25), value: currentListHeight)
-        }
-    }
-
-    private var prevNextControls: some View {
+    private var controlBar: some View {
         HStack(spacing: 12) {
             Button {
                 store.send(.prevButtonTapped)
@@ -184,6 +223,19 @@ public struct ItineraryView: View {
                     .clipShape(Circle())
             }
             .disabled(store.isPrevDisabled)
+
+            Button {
+                if !isListSheetPresented {
+                    sheetDetent = .height(Self.expandedListHeight)
+                }
+                isListSheetPresented.toggle()
+            } label: {
+                Image(systemName: isListSheetPresented ? "chevron.down" : "chevron.up")
+                    .font(.title2)
+                    .padding(10)
+                    .background(.thinMaterial)
+                    .clipShape(Circle())
+            }
 
             Button {
                 store.send(.nextButtonTapped)
@@ -200,7 +252,7 @@ public struct ItineraryView: View {
 
     // MARK: - 하단 리스트
 
-    private var itemListSheet: some View {
+    private var itemListContent: some View {
         Group {
             if store.isLoading && store.selectedItems.isEmpty {
                 ProgressView("불러오는 중…")
@@ -303,20 +355,21 @@ public struct ItineraryView: View {
         }
         .sheet(
             isPresented: Binding(
-                get: { addItemStore != nil },
+                get: { addItemFlowStore != nil },
                 set: { isPresented in
-                    if !isPresented { addItemStore = nil }
+                    if !isPresented { addItemFlowStore = nil }
                 }
             )
         ) {
-            if let addItemStore {
-                AddItemView(store: addItemStore)
-                    .onChange(of: addItemStore.savedItem) { _, savedItem in
-                        if let savedItem {
-                            store.send(.itemAdded(savedItem))
-                            self.addItemStore = nil
-                        }
-                    }
+            if let addItemFlowStore {
+                AddItemFlowView(
+                    store: addItemFlowStore,
+                    onItemAdded: { item in
+                        store.send(.itemAdded(item))
+                        self.addItemFlowStore = nil
+                    },
+                    onCancelled: { self.addItemFlowStore = nil }
+                )
             }
         }
         .confirmationDialog(

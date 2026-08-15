@@ -85,10 +85,17 @@ public struct TripEditFeature {
                 let isCreating = state.tripID == nil
                 let tripID = state.tripID ?? uuid()
                 let name = state.name
-                let startDate = state.startDate
-                let endDate = state.endDate
+                // DatePicker가 준 Date는 기기 타임존 자정이라, DB 인코딩(UTC 기준
+                // "yyyy-MM-dd")과 그대로 맞물리게 UTC 자정으로 정규화해둔다 — 안 그러면
+                // 한국(UTC+9)처럼 UTC보다 빠른 타임존에서는 저장할 때마다 하루 앞당겨진다.
+                let startDate = DateOnly.normalizeToUTCMidnight(state.startDate)
+                let endDate = DateOnly.normalizeToUTCMidnight(state.endDate)
                 let countryCodes = state.selectedCountryCodes
-                let calendar = Calendar.current
+                let calendar: Calendar = {
+                    var calendar = Calendar(identifier: .gregorian)
+                    calendar.timeZone = TimeZone(identifier: "UTC")!
+                    return calendar
+                }()
 
                 return .run { send in
                     do {
@@ -111,7 +118,7 @@ public struct TripEditFeature {
                             TripCountry(
                                 tripId: tripID,
                                 countryCode: code,
-                                color: CountryCatalog.option(for: code)?.defaultColorHex ?? "#2c3e50",
+                                color: CountryCatalog.option(for: code)?.defaultColorHex ?? WaypinTheme.brandNavyHex,
                                 sortOrder: index
                             )
                         }

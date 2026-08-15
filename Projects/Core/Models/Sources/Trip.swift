@@ -4,7 +4,7 @@ import Foundation
 /// 내려주는데, Supabase Swift SDK의 기본 `Date` 디코딩은 시간까지 포함된 ISO8601 포맷만
 /// 인식해서 이 값을 그대로 디코딩하면 "Invalid date format" 에러가 난다. `start_date`/
 /// `end_date`/`day_date`처럼 실제로 `date` 타입인 컬럼은 이 포맷터로 직접 인코딩/디코딩한다.
-enum DateOnly {
+public enum DateOnly {
     static let formatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.calendar = Calendar(identifier: .gregorian)
@@ -13,6 +13,19 @@ enum DateOnly {
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter
     }()
+
+    /// `DatePicker` 같은 UI에서 받은 `Date`는 기기 타임존(예: 한국 UTC+9) 기준 자정을
+    /// 가리킨다. 위 `formatter`는 UTC 기준으로 문자열을 만들기 때문에, 그 `Date`를 그대로
+    /// 인코딩하면 UTC로는 전날 오후가 돼서 하루 앞당겨 저장된다("9/19을 선택했는데 9/18로
+    /// 저장" 버그). 화면에 보이는 날짜(연/월/일)를 기기 타임존 기준으로 읽어서, 그 값 그대로
+    /// UTC 자정으로 다시 만들어 이 어긋남을 없앤다 — start_date/end_date/day_date처럼
+    /// "순수 날짜"(시간 의미 없음) 값을 만들 때는 항상 이걸 거쳐야 한다.
+    public static func normalizeToUTCMidnight(_ date: Date, referenceCalendar: Calendar = .current) -> Date {
+        let components = referenceCalendar.dateComponents([.year, .month, .day], from: date)
+        var utcCalendar = Calendar(identifier: .gregorian)
+        utcCalendar.timeZone = TimeZone(identifier: "UTC")!
+        return utcCalendar.date(from: components)!
+    }
 
     static func decode(_ container: KeyedDecodingContainer<Trip.CodingKeys>, forKey key: Trip.CodingKeys) throws -> Date {
         let string = try container.decode(String.self, forKey: key)

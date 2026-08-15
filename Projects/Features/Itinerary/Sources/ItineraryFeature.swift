@@ -8,7 +8,10 @@ import Models
 public struct ItineraryFeature {
     @ObservableState
     public struct State: Equatable {
-        public var trip: Trip
+        /// 지도 탭이 상시 존재하는 화면이 되면서(예전엔 여행을 고를 때만 생성됐음), 아직 여행을
+        /// 안 골랐을 수도 있는 상태를 표현하려고 옵셔널로 뒀다. `nil`이면 화면이 빈 상태(지도만,
+        /// "여행 불러오기" 버튼)를 그린다.
+        public var trip: Trip?
         public var countries: IdentifiedArrayOf<TripCountry> = []
         public var days: IdentifiedArrayOf<TripDay> = []
         public var selectedDayID: TripDay.ID?
@@ -18,9 +21,9 @@ public struct ItineraryFeature {
         public var isLoading = false
         public var errorMessage: String?
         // `@Presents`/`ifLet` 프레젠테이션 대신 부모 View가 이 필드를 직접 관찰해서 새
-        // AddItemFeature Store를 만든다 (TripListFeature/TripEditFeature와 동일한 이유·패턴 —
+        // AddItemFlowFeature Store를 만든다 (TripListFeature/TripEditFeature와 동일한 이유·패턴 —
         // Xcode 26.3/Swift 6.2.4 + TCA 1.26.1 조합의 실기기 EXC_BAD_ACCESS 우회).
-        public var addItemRequest: AddItemFeature.State?
+        public var addItemFlowRequest: AddItemFlowFeature.State?
 
         // travel_map.html의 `curIdx`를 그대로 이식한 상태 모델. nil이면 "전체보기"(오늘 동선을
         // 한눈에 보는 모드, 리스트 맨 위 항목) — 매 날짜 진입시 항상 이 상태로 시작한다(html의
@@ -129,12 +132,16 @@ public struct ItineraryFeature {
             return nil
         }
 
-        public init(trip: Trip) {
+        public init(trip: Trip? = nil) {
             self.trip = trip
         }
     }
 
     public enum Action {
+        /// 지도 탭에서 "여행 불러오기"로 여행을 고른 순간 — 기존 Store를 새로 만드는 대신
+        /// (지도 탭이 이제 상시 존재하는 화면이라) 살아있는 Store에 이 액션을 보내서 여행을
+        /// 채워 넣고, 곧바로 `.onAppear`와 같은 로딩을 시작한다.
+        case tripSelected(Trip)
         case onAppear
         case daysResponse(Result<[TripDay], any Error>)
         case itemsResponse(Result<[ItineraryItem], any Error>)
@@ -177,9 +184,15 @@ public struct ItineraryFeature {
     public var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
+            case let .tripSelected(trip):
+                // 다른 여행으로 갈아탈 수도 있으니(마이페이지에서 여행 목록 다시 열기 등)
+                // 이전 여행의 날짜/일정/경로 캐시를 전부 비우고 새로 시작한다.
+                state = State(trip: trip)
+                return .send(.onAppear)
+
             case .onAppear:
+                guard let tripID = state.trip?.id else { return .none }
                 state.isLoading = true
-                let tripID = state.trip.id
                 return .run { send in
                     var days: [TripDay] = []
                     do {
@@ -275,19 +288,6 @@ public struct ItineraryFeature {
                 if state.selectedDayID == nil {
                     state.selectedDayID = days.first?.id
                 }
-
-                // 구글맵 공유 확장으로 들어온 링크가 있으면, 지금 보고 있는 여행/날짜 기준으로
-                // 바로 일정 추가 화면을 링크 모드로 미리 채워서 띄운다.
-                if state.addItemRequest == nil, let dayID = state.selectedDayID, let pendingURL = PendingShareStore.consumePendingURL() {
-                    var addItemState = AddItemFeature.State(
-                        tripID: state.trip.id,
-                        dayID: dayID,
-                        startingSortOrder: state.itemsByDay[dayID]?.count ?? 0
-                    )
-                    addItemState.mode = .link
-                    addItemState.linkURLText = pendingURL
-                    state.addItemRequest = addItemState
-                }
                 return .none
 
             case let .daysResponse(.failure(error)):
@@ -335,13 +335,13 @@ public struct ItineraryFeature {
                 return .none
 
             case .addItemButtonTapped:
-                guard let dayID = state.selectedDayID else { return .none }
+                guard let trip = state.trip, let dayID = state.selectedDayID, let day = state.days[id: dayID] else { return .none }
                 let count = state.itemsByDay[dayID]?.count ?? 0
-                state.addItemRequest = AddItemFeature.State(tripID: state.trip.id, dayID: dayID, startingSortOrder: count)
+                state.addItemFlowRequest = AddItemFlowFeature.State(trip: trip, day: day, startingSortOrder: count, defaultTripID: trip.id)
                 return .none
 
             case .addItemRequestConsumed:
-                state.addItemRequest = nil
+                state.addItemFlowRequest = nil
                 return .none
 
             case let .itemAdded(item):
@@ -362,7 +362,7 @@ public struct ItineraryFeature {
                     itemsToPersist.append(item)
                 }
                 guard !itemsToPersist.isEmpty else { return .none }
-                return .run { [itineraryRepository] _ in
+                return .run { [itineraryRepository, itemsToPersist] _ in
                     for item in itemsToPersist {
                         _ = try? await itineraryRepository.updateItem(item)
                     }
@@ -461,7 +461,7 @@ public struct ItineraryFeature {
                     )
                 }
 
-                return .run { send in
+                return .run { [itineraryRepository, updates] send in
                     do {
                         try await itineraryRepository.reorderItems(updates)
                         await send(.reorderPersistResponse(.success(())))
@@ -589,14 +589,11 @@ public struct ItineraryFeature {
                                     let requestItems = items.map {
                                         RouteLegRequestItem(id: $0.id, lat: $0.lat, lng: $0.lng, mode: $0.arrivalMode, noRoute: $0.noRoute)
                                     }
-                                    // 이 날짜 구간이 전부 기기에 캐시돼 있으면 네트워크를 아예
-                                    // 안 태운다 — 데이터 최소화가 목적이라 "탐색" 버튼을 다시
-                                    // 눌러도 이미 아는 구간은 재요청하지 않는다.
-                                    let cached = await routeCacheClient.legsCoveringDay(requestItems)
-                                    if cached.allCovered {
-                                        await send(.dayRoutesResponse(day.id, .success(cached.legs)))
-                                        return
-                                    }
+                                    // "전체 경로 탐색" 버튼은 사용자가 명시적으로 최신 상태를
+                                    // 요청한 것이므로 캐시 여부와 상관없이 항상 새로 조회한다
+                                    // (조용히 캐시부터 채우는 건 화면 진입시 loadCachedRoutes가
+                                    // 이미 하고 있음). 새로 받아온 결과는 dayRoutesResponse
+                                    // 성공 처리에서 그대로 캐시에 다시 저장돼 최신화된다.
                                     do {
                                         let legs = try await routeAPIClient.fetchDayRoutes(requestItems)
                                         await send(.dayRoutesResponse(day.id, .success(legs)))
@@ -631,7 +628,7 @@ public struct ItineraryFeature {
                     state.itemsByDay[dayID]?[id: leg.toItemId] = item
                     itemsToPersist.append(item)
                 }
-                return .run { [itineraryRepository, routeCacheClient] _ in
+                return .run { [itineraryRepository, routeCacheClient, itemsToPersist] _ in
                     await routeCacheClient.save(legs, requestItemsForCache)
                     for item in itemsToPersist {
                         _ = try? await itineraryRepository.updateItem(item)
@@ -680,21 +677,20 @@ public struct ItineraryFeature {
         let targets = items.filter { $0.hasLocation && $0.countryCode == nil }
         guard !targets.isEmpty else { return .none }
         return .run { send in
-            let resolved = await withTaskGroup(of: (ItineraryItem.ID, String?).self) { group -> [ItineraryItem.ID: String] in
+            // `CountryLookupClient`가 CLGeocoder 호출 자체를 속도 제한하기 때문에, 항목이
+            // 많은(수백 개짜리 샘플 데이터 등) 여행은 전부 끝나기까지 몇 분 걸릴 수 있다 —
+            // 그래서 다 모아서 한 번에 보내지 않고 하나씩 끝나는 대로 바로 보낸다. 그래야
+            // DB 저장도 그때그때 되고(중간에 앱이 꺼져도 이미 끝난 만큼은 남음), 경고
+            // 아이콘/국가 헤더도 계산되는 대로 점진적으로 반영된다.
+            await withTaskGroup(of: Void.self) { group in
                 for item in targets {
                     guard let lat = item.lat, let lng = item.lng else { continue }
                     group.addTask {
-                        (item.id, await self.countryLookupClient.countryCode(lat, lng))
+                        guard let code = await self.countryLookupClient.countryCode(lat, lng) else { return }
+                        await send(.countryCodesResolved([item.id: code]))
                     }
                 }
-                var result: [ItineraryItem.ID: String] = [:]
-                for await (id, code) in group {
-                    if let code { result[id] = code }
-                }
-                return result
             }
-            guard !resolved.isEmpty else { return }
-            await send(.countryCodesResolved(resolved))
         }
     }
 }

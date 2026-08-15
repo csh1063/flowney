@@ -76,7 +76,14 @@ private func computeLegsCoveringDay(_ items: [RouteLegRequestItem], store: Route
         case let .skipped(leg):
             legs.append(leg)
         case let .lookup(key):
-            if let cached = await store.load(key: key) {
+            if var cached = await store.load(key: key) {
+                // 캐시 키는 좌표 기준이라 같은 구간(예: "숙소→중앙역")이 여러 날 반복돼도
+                // 재사용된다 — 그 대신 캐시에 저장돼 있던 fromItemId/toItemId는 "그 좌표
+                // 쌍을 맨 처음 캐싱했을 때의 항목 id"라서, 지금 이 날짜의 실제 항목 id로
+                // 덮어써야 한다. 안 그러면 좌표가 겹치는 다른 구간과 leg id(from-to 조합)가
+                // 우연히 같아져 IdentifiedArrayOf가 중복 키로 크래시한다.
+                cached.fromItemId = items[index].id
+                cached.toItemId = items[index + 1].id
                 legs.append(cached)
             } else {
                 allCovered = false

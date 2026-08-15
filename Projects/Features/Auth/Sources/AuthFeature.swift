@@ -12,6 +12,11 @@ public struct AuthFeature: Sendable {
         /// 직접 쓰지 않는다. 실제 로그인/로그아웃 "전환"이 있을 때만 값이 바뀌는 안정적인
         /// 플래그를 따로 두고, RootView는 이걸로만 최상위 화면을 분기한다.
         public var isSignedIn: Bool = false
+        /// 스플래시 화면을 띄우는 동안의 상태 — 최초 세션 조회(`authClient.currentSession()`)
+        /// 결과가 오기 전까지 true. 이게 없으면 `isSignedIn`이 기본 `false`라서, 로그인된
+        /// 사용자도 앱을 켤 때마다 로그인 화면이 잠깐 보였다가 세션이 확인되고 나서야
+        /// 메인으로 넘어가는 깜빡임이 생긴다.
+        public var isCheckingSession: Bool = true
         public var isLoading: Bool = false
         public var errorMessage: String?
 
@@ -49,9 +54,17 @@ public struct AuthFeature: Sendable {
             switch action {
             case .onAppear:
                 return .run { send in
-                    if let session = await authClient.currentSession() {
-                        await send(.sessionChanged(session))
-                    }
+                    // 로컬에 캐시된 세션이면 조회가 거의 즉시 끝나서 스플래시가 한 프레임도
+                    // 안 되게 스쳐 지나간다 — 최소 노출 시간(3초)을 세션 조회와 동시에
+                    // 돌려서, 조회가 더 빨리 끝나도 스플래시는 최소 이만큼 보이게 한다.
+                    async let sessionResult = authClient.currentSession()
+                    async let minimumSplashDelay: Void? = try? Task.sleep(for: .seconds(3))
+                    let session = await sessionResult
+                    _ = await minimumSplashDelay
+                    // 세션이 nil이어도 "확인 결과 없음"을 명시적으로 알려야 스플래시를
+                    // 내리고 로그인 화면으로 넘어갈 수 있다 — 있을 때만 보내면 로그아웃
+                    // 상태에서 영원히 스플래시에 머무른다.
+                    await send(.sessionChanged(session))
                     for await session in authClient.sessionChanges() {
                         await send(.sessionChanged(session))
                     }
@@ -138,6 +151,7 @@ public struct AuthFeature: Sendable {
                 return .none
 
             case let .sessionChanged(session):
+                state.isCheckingSession = false
                 state.session = session
                 let signedIn = session.map { !$0.isExpired } ?? false
                 if state.isSignedIn != signedIn {

@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import DesignSystem
 import Models
 import SwiftUI
 
@@ -12,24 +13,33 @@ public struct BudgetView: View {
     public var body: some View {
         List {
             Section("총 합계") {
-                summaryRow(title: "전체", amount: store.grandTotalKRW)
-                summaryRow(title: "결제완료", amount: store.paidTotalKRW)
-                summaryRow(title: "미결제", amount: store.unpaidTotalKRW)
+                VStack(spacing: WaypinSpacing.sm) {
+                    summaryRow(title: "전체", amount: store.grandTotalKRW)
+                    summaryRow(title: "결제완료", amount: store.paidTotalKRW)
+                    summaryRow(title: "미결제", amount: store.unpaidTotalKRW)
+                }
+                .waypinCard()
+                .waypinCardListRow()
             }
 
             if !store.groupedByCategory.isEmpty {
                 Section("카테고리별") {
-                    ForEach(store.groupedByCategory) { group in
-                        HStack {
-                            Text(group.category.displayName)
-                            Spacer()
-                            Text("\(group.items.count)건")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text(formatted(group.totalKRW))
-                                .font(.body.weight(.medium))
+                    VStack(spacing: WaypinSpacing.sm) {
+                        ForEach(store.groupedByCategory) { group in
+                            HStack {
+                                Text(group.category.displayName)
+                                    .font(WaypinFont.body)
+                                Spacer()
+                                Text("\(group.items.count)건")
+                                    .font(WaypinFont.caption)
+                                    .foregroundStyle(WaypinTheme.textSecondary)
+                                Text(formatted(group.totalKRW))
+                                    .font(WaypinFont.numeric)
+                            }
                         }
                     }
+                    .waypinCard()
+                    .waypinCardListRow()
                 }
             }
 
@@ -37,6 +47,8 @@ public struct BudgetView: View {
                 Section("🔜 결제해야 하는 것") {
                     ForEach(store.unpaidItems) { item in
                         itemRow(item)
+                            .waypinCard()
+                            .waypinCardListRow()
                     }
                 }
             }
@@ -45,6 +57,8 @@ public struct BudgetView: View {
                 Section("✅ 결제완료") {
                     ForEach(store.paidItems) { item in
                         itemRow(item)
+                            .waypinCard()
+                            .waypinCardListRow()
                     }
                 }
             }
@@ -52,13 +66,17 @@ public struct BudgetView: View {
             if !store.itemsMissingKRWConversion.isEmpty {
                 Section {
                     Text("원화 환산 금액이 없는 항목 \(store.itemsMissingKRWConversion.count)건은 합계에서 빠져있어요. 일정 편집에서 채워주세요.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(WaypinFont.caption)
+                        .foregroundStyle(WaypinTheme.textSecondary)
+                        .waypinCard()
+                        .waypinCardListRow()
                 }
             }
         }
-        .navigationTitle("\(store.trip.name) 요금표")
-        .navigationBarTitleDisplayMode(.inline)
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(WaypinTheme.background)
+        .waypinLeadingTitle("\(store.trip.name) 요금표")
         .overlay {
             if store.isLoading {
                 ProgressView()
@@ -70,30 +88,32 @@ public struct BudgetView: View {
     private func summaryRow(title: String, amount: Decimal) -> some View {
         HStack {
             Text(title)
+                .font(WaypinFont.body)
             Spacer()
             Text(formatted(amount))
-                .font(.body.weight(.semibold))
+                .font(WaypinFont.numeric)
         }
     }
 
     private func itemRow(_ item: ItineraryItem) -> some View {
         HStack {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: WaypinSpacing.xs) {
                 Text(item.name)
+                    .font(WaypinFont.bodyEmphasis)
                 if let status = item.paymentStatus {
-                    Text(status.displayName)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                    StatusPill(text: status.displayName, color: status.pillColor)
                 }
             }
             Spacer()
             if let amount = item.costAmount {
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("\(amount)\(item.costCurrency ?? "")")
+                let priceText: String = "\(amount)\(item.costCurrency ?? "")"
+                VStack(alignment: .trailing, spacing: WaypinSpacing.xs) {
+                    Text(priceText)
+                        .font(WaypinFont.numeric)
                     if let krw = item.costAmountKRW {
                         Text(formatted(krw))
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .font(WaypinFont.caption)
+                            .foregroundStyle(WaypinTheme.textSecondary)
                     }
                 }
             }

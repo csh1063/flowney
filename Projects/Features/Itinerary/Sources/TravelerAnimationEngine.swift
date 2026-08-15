@@ -34,15 +34,22 @@ final class TravelerAnimationEngine {
     /// "지금 세그먼트 안에서의 fraction"을 "leg 전체 fraction"으로 환산하는 데 쓴다.
     private var segmentBaseFraction: [Double] = []
     private var totalPathLength: Double = 1
+    /// html의 `google.maps.event.addListenerOnce(map,'idle',...)`과 동일 — 카메라가 이번
+    /// leg 범위로 fit하는 애니메이션이 끝날 때까지 마커 이동 시작을 미룬다. 카메라랑 마커가
+    /// 동시에 움직이면 카메라가 자리잡는 동안 마커가 화면상 선을 벗어나 보이기 때문.
+    private var pendingCameraIdle: (() -> Void)?
+    private var cameraIdleTimeoutWorkItem: DispatchWorkItem?
 
     init(mapView: GMSMapView) {
         self.mapView = mapView
         let marker = GMSMarker()
         marker.zIndex = 100
-        // 기본 groundAnchor(0.5, 1.0)는 핀처럼 뾰족한 아이콘 기준이라, 이모지 라벨을 쓰면
-        // 실제 좌표가 아이콘 아래쪽 끝이 아니라 위쪽에 붙어서 선에서 한참 떠 보인다 —
-        // 이모지 정중앙이 좌표에 오도록 (0.5, 0.5)로 맞춘다.
-        marker.groundAnchor = CGPoint(x: 0.5, y: 0.5)
+        // html 원본(AdvancedMarkerElement)은 anchor를 따로 안 건드려서 기본값인 정중앙하단
+        // (0.5, 1.0)을 그대로 쓴다 — 걷는 사람 아이콘은 "발이 선 위"에 있어야 자연스럽고,
+        // 이게 실제로 html에서 자연스러워 보였던 이유였다. 예전에 "이모지는 핀처럼 안
+        // 뾰족하니까"라며 중앙(0.5, 0.5)으로 바꿨던 건 오히려 html과 다른 선택이었고,
+        // 방향이 꺾이는 구간에서 아이콘 몸통이 선을 벗어난 것처럼 보이는 원인이 됐다.
+        marker.groundAnchor = CGPoint(x: 0.5, y: 1.0)
         self.travelerMarker = marker
     }
 
@@ -52,6 +59,9 @@ final class TravelerAnimationEngine {
         displayLink = nil
         onCompleted = nil
         onProgress = nil
+        cameraIdleTimeoutWorkItem?.cancel()
+        cameraIdleTimeoutWorkItem = nil
+        pendingCameraIdle = nil
     }
 
     func animate(
@@ -82,21 +92,48 @@ final class TravelerAnimationEngine {
         travelerMarker.position = firstPoint
         travelerMarker.map = mapView
 
-        if let mapView {
-            var bounds = GMSCoordinateBounds(coordinate: from, coordinate: to)
-            for segment in segments {
-                for point in segment.points {
-                    bounds = bounds.includingCoordinate(point)
-                }
-            }
-            // 하단 리스트 패널에 가려지지 않도록, 그 높이만큼 아래쪽 inset을 더 준다 — 리스트가
-            // 크게 펼쳐져 있을 때(3.5줄)와 작게 접혀 있을 때(1.5줄)에 따라 지도가 실제로 보이는
-            // 영역의 중심이 달라진다.
-            let edgeInsets = UIEdgeInsets(top: 64, left: 64, bottom: 64 + bottomInset, right: 64)
-            mapView.animate(with: GMSCameraUpdate.fit(bounds, with: edgeInsets))
+        guard let mapView else {
+            runNextSegment(generation: myGen)
+            return
         }
 
-        runNextSegment(generation: myGen)
+        var bounds = GMSCoordinateBounds(coordinate: from, coordinate: to)
+        for segment in segments {
+            for point in segment.points {
+                bounds = bounds.includingCoordinate(point)
+            }
+        }
+        // 하단 리스트 패널에 가려지지 않도록, 그 높이만큼 아래쪽 inset을 더 준다 — 리스트가
+        // 크게 펼쳐져 있을 때(3.5줄)와 작게 접혀 있을 때(1.5줄)에 따라 지도가 실제로 보이는
+        // 영역의 중심이 달라진다.
+        let edgeInsets = UIEdgeInsets(top: 64, left: 64, bottom: 64 + bottomInset, right: 64)
+
+        // 카메라 fit 애니메이션이 끝날 때까지 마커 이동을 미룬다(html과 동일). idle 콜백은
+        // `RouteMapView.Coordinator.mapView(_:idleAt:)`가 `cameraDidBecomeIdle()`을 호출해서
+        // 전달해준다 — 혹시 idle이 안 뜨는 경우(범위가 그대로라 카메라가 실제로 안 움직이는
+        // 등)를 대비해 1초 타임아웃으로도 그냥 진행한다.
+        pendingCameraIdle = { [weak self] in
+            guard let self, myGen == self.generation else { return }
+            self.cameraIdleTimeoutWorkItem?.cancel()
+            self.cameraIdleTimeoutWorkItem = nil
+            self.pendingCameraIdle = nil
+            self.runNextSegment(generation: myGen)
+        }
+        let timeoutItem = DispatchWorkItem { [weak self] in
+            guard let self, myGen == self.generation else { return }
+            self.pendingCameraIdle?()
+        }
+        cameraIdleTimeoutWorkItem = timeoutItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: timeoutItem)
+
+        mapView.animate(with: GMSCameraUpdate.fit(bounds, with: edgeInsets))
+    }
+
+    /// `RouteMapView.Coordinator`가 `GMSMapViewDelegate.mapView(_:idleAt:)`에서 호출한다 —
+    /// 방금 요청한 카메라 fit이 끝나면 대기 중이던 마커 이동을 시작한다. 대기 중인 게 없으면
+    /// (마커 이동과 무관한 일반 카메라 idle이면) 아무 일도 안 한다.
+    func cameraDidBecomeIdle() {
+        pendingCameraIdle?()
     }
 
     // html의 `for(const seg of orderedSegs){ await animateSegment(...); if(hasTransfer) await pause(300); }`를
@@ -149,12 +186,21 @@ final class TravelerAnimationEngine {
         guard let segment = activeSegment else { return }
         let elapsed = CACurrentMediaTime() - startTimestamp
         let fraction = min(elapsed / (segment.durationMs / 1000.0), 1.0)
+        // GMSMarker.position은 내부적으로 CALayer 기반이라 기본적으로 암묵적 애니메이션이
+        // 걸린다 — 매 프레임(1/60초) 새 좌표를 줘도 SDK가 그 각각을 자기 나름대로 부드럽게
+        // 보간해서 그리다 보니, 실제로 꺾이는 지점들이 뭉개져서 캐릭터가 진짜 경로와 다른
+        // (더 뭉툭한) 모양으로 움직이는 것처럼 보였다. 웹 버전(AdvancedMarkerElement, 그냥
+        // DOM 엘리먼트라 CSS transition 없인 즉시 이동)엔 없는 문제. CATransaction으로
+        // 암묵적 애니메이션을 꺼서 매 프레임 계산한 좌표가 그 즉시 그대로 찍히게 한다.
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
         travelerMarker.position = Self.pointAtFraction(
             points: segment.points,
             cumulativeLengths: segment.cumulativeLengths,
             totalLength: segment.totalLength,
             fraction: fraction
         )
+        CATransaction.commit()
 
         let segmentWeight = segment.totalLength / totalPathLength
         let overallFraction = segmentBaseFraction[segmentIndex] + segmentWeight * fraction
@@ -171,36 +217,38 @@ final class TravelerAnimationEngine {
 
     // MARK: - 구간(세그먼트) 구성
 
-    /// `leg.steps`가 있으면(환승 있는 대중교통) 각 스텝을 별도 세그먼트로 나눠서, 전체
-    /// 애니메이션 시간(mode별 baseAnimationDurationMs)을 각 세그먼트의 실제 거리 비율만큼
-    /// 나눠 갖는다. steps가 없으면(직선이거나 환승 없는 도보/차량) 통째로 한 세그먼트.
+    /// `RouteMapView.redraw()`가 실제로 그리는 것과 정확히 같은 조건/같은 좌표로 세그먼트를
+    /// 만든다 — 대중교통 계열이고 steps가 있으면(환승 있는 대중교통) 각 스텝을 별도
+    /// 세그먼트로 나눠서 전체 애니메이션 시간을 세그먼트의 실제 거리 비율만큼 나눠 갖고,
+    /// 그 외(도보/자동차/직선 fallback 등)는 통째로 한 세그먼트. 예전엔 이 조건이
+    /// `RoutePathDecoding`과 달라서(steps 유무만 봄) 도보/자동차 leg에서 그려지는 선과
+    /// 캐릭터가 따라가는 좌표가 서로 어긋났었다.
     private static func buildSegments(leg: RouteLeg, from: CLLocationCoordinate2D, to: CLLocationCoordinate2D) -> [Segment] {
         let totalDurationMs = leg.mode.baseAnimationDurationMs
+        let hasRealRoute = leg.status == .ok
 
-        guard !leg.steps.isEmpty else {
-            let points = decodePoints(leg: leg, from: from, to: to)
-            return [makeSegment(points: points, durationMs: totalDurationMs, mode: leg.mode)]
-        }
-
-        let stepPoints: [[CLLocationCoordinate2D]] = leg.steps.map { step in
-            guard let path = GMSPath(fromEncodedPath: step.polyline), path.count() > 0 else { return [] }
-            var points: [CLLocationCoordinate2D] = []
-            for i in 0 ..< path.count() {
-                points.append(path.coordinate(at: i))
+        if RoutePathDecoding.usesSteppedRendering(leg: leg, hasRealRoute: hasRealRoute) {
+            let stepPoints: [[CLLocationCoordinate2D]] = leg.steps.map { step in
+                guard let path = GMSPath(fromEncodedPath: step.polyline), path.count() > 0 else { return [] }
+                return RoutePathDecoding.decode(path)
             }
-            return points
-        }
-        let stepLengths = stepPoints.map(pathLength)
-        let totalLength = max(stepLengths.reduce(0, +), 1e-9)
+            let stepLengths = stepPoints.map(pathLength)
+            let totalLength = max(stepLengths.reduce(0, +), 1e-9)
 
-        return zip(leg.steps, zip(stepPoints, stepLengths)).compactMap { step, pointsAndLength in
-            let (points, length) = pointsAndLength
-            guard points.count > 1 else { return nil }
-            let mode = mapVehicleToMode(travelMode: step.travelMode, vehicleType: step.vehicleType)
-            let durationMs = max(150, totalDurationMs * (length / totalLength))
-            return makeSegment(points: points, durationMs: durationMs, mode: mode)
+            let segments = zip(leg.steps, zip(stepPoints, stepLengths)).compactMap { step, pointsAndLength -> Segment? in
+                let (points, length) = pointsAndLength
+                guard points.count > 1 else { return nil }
+                let mode = mapVehicleToMode(travelMode: step.travelMode, vehicleType: step.vehicleType)
+                let durationMs = max(150, totalDurationMs * (length / totalLength))
+                return makeSegment(points: points, durationMs: durationMs, mode: mode)
+            }
+            if !segments.isEmpty { return segments }
         }
+
+        let points = RoutePathDecoding.singlePolylinePoints(leg: leg, hasRealRoute: hasRealRoute, from: from, to: to)
+        return [makeSegment(points: points, durationMs: totalDurationMs, mode: leg.mode)]
     }
+
 
     private static func makeSegment(points: [CLLocationCoordinate2D], durationMs: Double, mode: TransportMode) -> Segment {
         var cumulativeLengths = [0.0]
@@ -249,25 +297,18 @@ final class TravelerAnimationEngine {
         )
     }
 
+    // 경도 1도의 실제 거리는 위도에 따라 cos(위도)만큼 짧아진다(적도에서 멀어질수록 자오선이
+    // 좁아짐) — 이 앱이 다루는 위도대(네덜란드~스위스, 북위 46~52도)에서는 대략 0.67~0.70배라
+    // 무시할 수 없는 오차다. 이걸 안 보정하고 위경도 차이를 그냥 피타고라스로 더하면, 남북/동서
+    // 방향이 섞인 굽은 길에서 구간별 "실제 비율"이 어긋나서 캐릭터가 커브를 실제보다 빨리
+    // 통과하거나(지름길처럼 보임) 늦게 통과하는 것처럼 보인다 — 경도 차이에 cos(위도)를 곱해서
+    // 실제 거리 비율에 훨씬 가깝게 보정한다(정밀한 haversine까지는 필요 없고, 세그먼트 간
+    // 상대 비율만 맞으면 됨).
     private static func pseudoDistance(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> Double {
         let dLat = b.latitude - a.latitude
-        let dLng = b.longitude - a.longitude
+        let midLatRadians = (a.latitude + b.latitude) / 2 * .pi / 180
+        let dLng = (b.longitude - a.longitude) * cos(midLatRadians)
         return (dLat * dLat + dLng * dLng).squareRoot()
-    }
-
-    private static func decodePoints(
-        leg: RouteLeg,
-        from: CLLocationCoordinate2D,
-        to: CLLocationCoordinate2D
-    ) -> [CLLocationCoordinate2D] {
-        if let polylineString = leg.polyline, let path = GMSPath(fromEncodedPath: polylineString), path.count() > 0 {
-            var result: [CLLocationCoordinate2D] = []
-            for i in 0 ..< path.count() {
-                result.append(path.coordinate(at: i))
-            }
-            return result
-        }
-        return [from, to]
     }
 
     /// html의 `mapGoogleVehicleToIcon` 이식 — 구글 라우팅 API의 travelMode/vehicleType 문자열을
@@ -305,6 +346,7 @@ final class TravelerAnimationEngine {
         case .gondola, .funicular: return "🚡"
         case .car: return "🚗"
         case .boat: return "⛴️"
+        case .cograil: return "🚞"
         }
     }
 }
