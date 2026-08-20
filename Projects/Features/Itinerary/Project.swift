@@ -9,6 +9,7 @@ let project = waypinModuleProject(
         WaypinModule.designSystem.dependency,
         WaypinModule.apiClient.dependency,
         WaypinModule.addItem.dependency,
+        WaypinModule.tripEdit.dependency,
         .external(name: "ComposableArchitecture"),
         .external(name: "GoogleMaps"),
     ]

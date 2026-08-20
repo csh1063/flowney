@@ -33,6 +33,7 @@ public struct RootView: View {
     // 마이페이지에서 하위 페이지(계정정보/공유링크함)로 들어가있는 동안은 떠 있는 탭바를
     // 숨긴다 — MyPageView가 이 값을 올려보낸다.
     @State private var isMyPageSubpagePresented = false
+    @State private var floatingTabBarHeight: CGFloat = 0
     // 공유 익스텐션으로 링크를 저장한 뒤 앱을 다시 켜면, 그 첫 실행에서만 한 번
     // 공유링크함을 자동으로 열어준다.
     @State private var shouldAutoOpenShareInbox = false
@@ -59,7 +60,11 @@ public struct RootView: View {
         } else if store.auth.isSignedIn {
             // 네이티브 탭바는 완전히 숨기고, 화면 위에 떠 있는 느낌의 둥근 커스텀 탭바를
             // 직접 그린다 — 일정 리스트 시트가 창 레벨 모달이라 뜨는 순간 이 위로도 자연스레
-            // 덮이기 때문에, 시트 열릴 때 따로 탭바를 숨기는 로직이 필요 없다.
+            // 덮이기 때문에, 시트 열릴 때 따로 탭바를 숨기는 로직이 필요 없다. `ZStack`
+            // 오버레이라 알약 모양 바깥 여백은 터치가 그대로 아래 콘텐츠로 전달된다 —
+            // `safeAreaInset`은 그 여백까지 통째로 터치를 막아버려서 쓰지 않는다. 대신
+            // 탭바 높이를 직접 측정해서 `Environment`로 내려보내, 각 탭 콘텐츠가 필요한
+            // 만큼만 스스로 여백을 챙기게 한다.
             ZStack(alignment: .bottom) {
                 TabView(selection: $selectedTab) {
                     mapTab.tag(Tab.map)
@@ -82,8 +87,15 @@ public struct RootView: View {
                 // 경우에 대비한 이중 안전장치).
                 if !(selectedTab == .myPage && isMyPageSubpagePresented) {
                     floatingTabBar
+                        .background(
+                            GeometryReader { proxy in
+                                Color.clear.preference(key: FloatingTabBarHeightPreferenceKey.self, value: proxy.size.height)
+                            }
+                        )
                 }
             }
+            .onPreferenceChange(FloatingTabBarHeightPreferenceKey.self) { floatingTabBarHeight = $0 }
+            .environment(\.floatingTabBarHeight, floatingTabBarHeight)
             .onAppear { consumeAutoOpenShareInboxFlagIfNeeded() }
         } else {
             AuthView(store: store.scope(state: \.auth, action: \.auth))
@@ -161,20 +173,19 @@ public struct RootView: View {
         }
     }
 
-    // MARK: - 리스트 탭 (Phase 4에서 실제 구현 — 지금은 자리만)
+    // MARK: - 리스트 탭
 
     private var listTab: some View {
         NavigationStack {
-            VStack {
-                Spacer()
-                Text("준비중이에요")
-                    .font(WaypinFont.body)
-                    .foregroundStyle(WaypinTheme.textSecondary)
-                Spacer()
-            }
-            .frame(maxWidth: .infinity)
-            .background(WaypinTheme.background)
-            .waypinLeadingTitle("리스트")
+            ItineraryListView(
+                store: itineraryStore,
+                onTripListRequested: { isTripLoaderPresented = true },
+                onItemTapped: { dayID, itemID in
+                    itineraryStore.send(.dayTabTapped(dayID))
+                    itineraryStore.send(.selectStopTapped(itemID))
+                    selectedTab = .map
+                }
+            )
         }
     }
 

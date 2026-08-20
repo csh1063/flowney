@@ -149,6 +149,7 @@ public struct ItineraryFeature {
         case weatherResponse(TripDay.ID, Result<DayWeather, any Error>)
         case dayTabTapped(TripDay.ID)
         case addItemButtonTapped
+        case editItemTapped(ItineraryItem)
         case addItemRequestConsumed
         case itemAdded(ItineraryItem)
         case deleteItems(IndexSet)
@@ -340,12 +341,17 @@ public struct ItineraryFeature {
                 state.addItemFlowRequest = AddItemFlowFeature.State(trip: trip, day: day, startingSortOrder: count, defaultTripID: trip.id)
                 return .none
 
+            case let .editItemTapped(item):
+                guard let trip = state.trip, let day = state.days[id: item.dayId] else { return .none }
+                state.addItemFlowRequest = AddItemFlowFeature.State(editingItem: item, trip: trip, day: day)
+                return .none
+
             case .addItemRequestConsumed:
                 state.addItemFlowRequest = nil
                 return .none
 
             case let .itemAdded(item):
-                state.itemsByDay[item.dayId, default: []].append(item)
+                state.itemsByDay[item.dayId, default: []][id: item.id] = item
                 return resolveCountryCodes(for: [item])
 
             case let .countryCodesResolved(resolved):
@@ -419,15 +425,20 @@ public struct ItineraryFeature {
                 items.move(fromOffsets: source, toOffset: destination)
                 for (index, id) in items.ids.enumerated() {
                     items[id: id]?.sortOrder = index
+                    items[id: id]?.arrivalMode = nil
                 }
                 state.itemsByDay[dayID] = items
+                state.legsByDay[dayID] = []
 
                 let updates = items.map {
                     ItemReorderUpdate(id: $0.id, dayId: $0.dayId, sortOrder: $0.sortOrder)
                 }
-                return .run { send in
+                return .run { [itineraryRepository, items] send in
                     do {
                         try await itineraryRepository.reorderItems(updates)
+                        for item in items {
+                            _ = try? await itineraryRepository.updateItem(item)
+                        }
                         await send(.reorderPersistResponse(.success(())))
                     } catch {
                         await send(.reorderPersistResponse(.failure(error)))
@@ -445,25 +456,34 @@ public struct ItineraryFeature {
                 if let remainingIDs = state.itemsByDay[sourceDayID]?.ids {
                     for (index, id) in remainingIDs.enumerated() {
                         state.itemsByDay[sourceDayID]?[id: id]?.sortOrder = index
+                        state.itemsByDay[sourceDayID]?[id: id]?.arrivalMode = nil
                     }
                 }
+                state.legsByDay[sourceDayID] = []
 
                 item.dayId = targetDayID
                 item.sortOrder = state.itemsByDay[targetDayID]?.count ?? 0
+                item.arrivalMode = nil
                 state.itemsByDay[targetDayID, default: []].append(item)
+                state.legsByDay[targetDayID] = []
 
                 var updates = [ItemReorderUpdate(id: item.id, dayId: item.dayId, sortOrder: item.sortOrder)]
+                var itemsToPersist = [item]
                 if let sourceItems = state.itemsByDay[sourceDayID] {
                     updates.append(
                         contentsOf: sourceItems.map {
                             ItemReorderUpdate(id: $0.id, dayId: $0.dayId, sortOrder: $0.sortOrder)
                         }
                     )
+                    itemsToPersist.append(contentsOf: sourceItems)
                 }
 
-                return .run { [itineraryRepository, updates] send in
+                return .run { [itineraryRepository, updates, itemsToPersist] send in
                     do {
                         try await itineraryRepository.reorderItems(updates)
+                        for item in itemsToPersist {
+                            _ = try? await itineraryRepository.updateItem(item)
+                        }
                         await send(.reorderPersistResponse(.success(())))
                     } catch {
                         await send(.reorderPersistResponse(.failure(error)))

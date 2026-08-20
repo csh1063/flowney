@@ -59,4 +59,16 @@ public enum CountryCatalog {
     public static func option(for code: String) -> CountryOption? {
         all.first { $0.code == code }
     }
+
+    /// ISO 국가코드(예: "FR")를 지역 표시 기호(regional indicator)로 바꿔서 국기 이모지를 만든다.
+    public static func flagEmoji(for code: String) -> String {
+        let base: UInt32 = 127_397
+        var scalars = String.UnicodeScalarView()
+        for scalar in code.uppercased().unicodeScalars {
+            if let flagScalar = UnicodeScalar(base + scalar.value) {
+                scalars.append(flagScalar)
+            }
+        }
+        return String(scalars)
+    }
 }

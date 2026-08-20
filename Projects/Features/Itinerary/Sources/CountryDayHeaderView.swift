@@ -30,7 +30,7 @@ struct CountryDayHeaderView: View {
                 let color = segment.countryCode.map(countryColor) ?? Color.gray.opacity(0.35)
                 HStack(spacing: 3) {
                     if let code = segment.countryCode {
-                        Text(flagEmoji(for: code))
+                        Text(CountryCatalog.flagEmoji(for: code))
                             .font(.system(size: 11))
                     }
                     Text(segment.countryCode.flatMap { CountryCatalog.option(for: $0)?.name } ?? segment.countryCode ?? "")
@@ -47,18 +47,6 @@ struct CountryDayHeaderView: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         .shadow(color: .black.opacity(0.18), radius: 2, x: 0, y: 1)
-    }
-
-    /// ISO 국가코드(예: "FR")를 지역 표시 기호(regional indicator)로 바꿔서 국기 이모지를 만든다.
-    private func flagEmoji(for code: String) -> String {
-        let base: UInt32 = 127_397
-        var scalars = String.UnicodeScalarView()
-        for scalar in code.uppercased().unicodeScalars {
-            if let flagScalar = UnicodeScalar(base + scalar.value) {
-                scalars.append(flagScalar)
-            }
-        }
-        return String(scalars)
     }
 
     /// 날짜별로 N등분한 조각들 — 아직 인접 병합은 안 한 원자 단위.

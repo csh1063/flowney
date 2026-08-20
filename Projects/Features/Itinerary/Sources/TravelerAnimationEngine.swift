@@ -68,7 +68,6 @@ final class TravelerAnimationEngine {
         leg: RouteLeg,
         from: CLLocationCoordinate2D,
         to: CLLocationCoordinate2D,
-        bottomInset: CGFloat,
         onProgress: ((Double) -> Void)? = nil,
         onCompleted: @escaping () -> Void
     ) {
@@ -106,7 +105,7 @@ final class TravelerAnimationEngine {
         // 하단 리스트 패널에 가려지지 않도록, 그 높이만큼 아래쪽 inset을 더 준다 — 리스트가
         // 크게 펼쳐져 있을 때(3.5줄)와 작게 접혀 있을 때(1.5줄)에 따라 지도가 실제로 보이는
         // 영역의 중심이 달라진다.
-        let edgeInsets = UIEdgeInsets(top: 64, left: 64, bottom: 64 + bottomInset, right: 64)
+        let edgeInsets = UIEdgeInsets(top: 64, left: 64, bottom: 64, right: 64)
 
         // 카메라 fit 애니메이션이 끝날 때까지 마커 이동을 미룬다(html과 동일). idle 콜백은
         // `RouteMapView.Coordinator.mapView(_:idleAt:)`가 `cameraDidBecomeIdle()`을 호출해서

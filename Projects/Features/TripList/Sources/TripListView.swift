@@ -6,6 +6,7 @@ import TripEdit
 
 public struct TripListView: View {
     @Bindable var store: StoreOf<TripListFeature>
+    @Environment(\.dismiss) private var dismiss
     // TCA의 `@Presents`/`PresentationState`/`ifLet` 프레젠테이션 메커니즘이 이 프로젝트가
     // 쓰는 툴체인(Xcode 26.3 / Swift 6.2.4)에서 TCA 1.26.1과 조합했을 때 실기기에서
     // EXC_BAD_ACCESS를 유발하는 게 확인돼서(내용물을 빈 reducer로 바꿔도, `$store.scope`를
@@ -15,9 +16,6 @@ public struct TripListView: View {
     // 화면 전환은 부모(RootView)가 NavigationStack(path:)로 관리하므로, 탭 이벤트만 콜백으로
     // 위로 전달한다.
     let onTripSelected: (Trip) -> Void
-    // 디자인 시스템 카탈로그를 실기기에서 바로 확인할 수 있게 만든 임시 진입점 —
-    // 확인 끝나면 이 버튼과 상태는 제거해도 된다.
-    @State private var showDesignSystemCatalog = false
 
     public init(store: StoreOf<TripListFeature>, onTripSelected: @escaping (Trip) -> Void) {
         self.store = store
@@ -37,9 +35,15 @@ public struct TripListView: View {
                         Text(errorMessage)
                             .foregroundStyle(.red)
                     } else {
-                        Text("오른쪽 위 + 버튼으로 첫 여행을 만들어보세요.")
+                        Text("아래 버튼으로 첫 여행을 만들어보세요.")
                     }
                 } actions: {
+                    Button("여행 추가하기") {
+                        editStore = Store(initialState: TripEditFeature.State()) {
+                            TripEditFeature()
+                        }
+                    }
+                    .buttonStyle(.waypinPrimary)
                     Button("샘플 여행 불러오기") {
                         store.send(.loadSampleDataButtonTapped)
                     }
@@ -78,35 +82,15 @@ public struct TripListView: View {
         .navigationTitle("여행 목록")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
+            ToolbarItem(placement: .cancellationAction) {
                 Button {
-                    editStore = Store(initialState: TripEditFeature.State()) {
-                        TripEditFeature()
-                    }
+                    dismiss()
                 } label: {
-                    Image(systemName: "plus")
-                }
-            }
-            // 임시: 디자인 시스템 카탈로그 확인용.
-            ToolbarItem(placement: .secondaryAction) {
-                Button {
-                    showDesignSystemCatalog = true
-                } label: {
-                    Image(systemName: "paintpalette")
+                    Image(systemName: "xmark")
                 }
             }
         }
         .onAppear { store.send(.onAppear) }
-        .sheet(isPresented: $showDesignSystemCatalog) {
-            NavigationStack {
-                DesignSystemCatalogView()
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("닫기") { showDesignSystemCatalog = false }
-                        }
-                    }
-            }
-        }
         .sheet(
             isPresented: Binding(
                 get: { editStore != nil },

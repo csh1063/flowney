@@ -101,6 +101,7 @@ public enum ItemSource: String, Codable, Sendable, CaseIterable {
     case manual
     case link
     case shareExtension = "share_extension"
+    case reuse
 }
 
 /// `itinerary_items.cost_category`

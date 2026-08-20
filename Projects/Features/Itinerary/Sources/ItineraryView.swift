@@ -3,9 +3,13 @@ import ComposableArchitecture
 import DesignSystem
 import Models
 import SwiftUI
+import TripEdit
 
 public struct ItineraryView: View {
     @Bindable var store: StoreOf<ItineraryFeature>
+    // `@Presents`/`ifLet` 대신 이 View가 직접 TripEditFeature Store를 소유한다
+    // (TripListView와 동일한 이유·패턴) — "여행 수정" 메뉴에서 쓴다.
+    @State private var editStore: StoreOf<TripEditFeature>?
     // `@Presents`/`ifLet` 대신 이 View가 직접 AddItemFlowFeature Store를 소유한다
     // (TripListView와 동일한 이유·패턴).
     @State private var addItemFlowStore: StoreOf<AddItemFlowFeature>?
@@ -35,33 +39,35 @@ public struct ItineraryView: View {
         return sheetDetent == .height(Self.collapsedListHeight) ? Self.collapsedListHeight : Self.expandedListHeight
     }
 
-    // 지도 탭은 상시 화면이라, 여행 유무와 무관하게 `RouteMapView`(네이티브 `GMSMapView` 래퍼)를
-    // 이 body 하나에서만 만든다. 예전엔 "여행 없음"/"여행 로드됨"이 완전히 다른 서브트리
-    // (emptyState/loadedContent)라 각자 RouteMapView를 따로 갖고 있었는데, SwiftUI가 그 둘을
-    // 다른 뷰로 취급해서 여행을 처음 고르는 순간 네이티브 지도 뷰가 통째로 파괴되고 새로
-    // 만들어졌다 — Maps SDK가 콘솔에 "Multiple instances of CCTClearcutUploader" 경고를 내는
-    // 원인이었다. 지금은 위에 얹는 UI(버튼 vs 헤더/컨트롤바)만 조건부로 바뀌고, 지도 자체는
-    // 파라미터만 갈아끼우며 하나로 계속 산다.
     public var body: some View {
-        ZStack(alignment: .top) {
-            mapLayer
-
+        VStack(spacing: 0) {
             if store.trip != nil {
                 headerSection
             } else {
                 loadTripButton
             }
 
-            if store.trip != nil, let errorMessage = store.errorMessage {
-                errorBanner(errorMessage)
-            }
+            ZStack(alignment: .top) {
+                mapLayer
 
+                if store.trip != nil, let errorMessage = store.errorMessage {
+                    errorBanner(errorMessage)
+                }
+
+                if store.trip != nil, store.days.isEmpty {
+                    WaypinTheme.background
+                        .overlay { ProgressView() }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .ignoresSafeArea(edges: .bottom)
+                }
+            }
+            .animation(.easeInOut(duration: 0.25), value: currentListHeight)
+        }
+        .overlay(alignment: .bottomTrailing) {
             if store.trip != nil {
                 controlBar
                     .padding(.trailing, 16)
-                    .padding(.bottom, currentListHeight + 16)
-                    .animation(.easeInOut(duration: 0.25), value: currentListHeight)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                    .padding(.bottom, max(24, currentListHeight - UIApplication.shared.keyWindowSafeAreaInsets.bottom))
             }
         }
         .waypinLeadingTitle(store.trip?.name ?? "Waypin")
@@ -87,10 +93,24 @@ public struct ItineraryView: View {
                     .disabled(store.isSearchingAllRoutes)
                 }
                 ToolbarItem(placement: .secondaryAction) {
+                    Divider()
+                }
+                ToolbarItem(placement: .secondaryAction) {
                     Button {
                         onTripListRequested()
                     } label: {
                         Label("여행 목록", systemImage: "list.bullet")
+                    }
+                }
+                ToolbarItem(placement: .secondaryAction) {
+                    Button {
+                        if let trip = store.trip {
+                            editStore = Store(initialState: TripEditFeature.State(editing: trip, countries: Array(store.countries))) {
+                                TripEditFeature()
+                            }
+                        }
+                    } label: {
+                        Label("여행 수정", systemImage: "pencil")
                     }
                 }
             }
@@ -100,7 +120,14 @@ public struct ItineraryView: View {
         }
         .onChange(of: store.addItemFlowRequest) { _, request in
             guard let request else { return }
-            addItemFlowStore = Store(initialState: request) { AddItemFlowFeature() }
+            let wasListSheetPresented = isListSheetPresented
+            isListSheetPresented = false
+            Task { @MainActor in
+                if wasListSheetPresented {
+                    try? await Task.sleep(for: .milliseconds(350))
+                }
+                addItemFlowStore = Store(initialState: request) { AddItemFlowFeature() }
+            }
             store.send(.addItemRequestConsumed)
         }
         .sheet(isPresented: $isListSheetPresented) {
@@ -109,6 +136,43 @@ public struct ItineraryView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackgroundInteraction(.enabled)
                 .interactiveDismissDisabled()
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { addItemFlowStore != nil },
+                set: { isPresented in
+                    if !isPresented { addItemFlowStore = nil }
+                }
+            )
+        ) {
+            if let addItemFlowStore {
+                AddItemFlowView(
+                    store: addItemFlowStore,
+                    onItemAdded: { item in
+                        store.send(.itemAdded(item))
+                        self.addItemFlowStore = nil
+                    },
+                    onCancelled: { self.addItemFlowStore = nil }
+                )
+            }
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { editStore != nil },
+                set: { isPresented in
+                    if !isPresented { editStore = nil }
+                }
+            )
+        ) {
+            if let editStore {
+                TripEditView(store: editStore)
+                    .onChange(of: editStore.savedTrip) { _, savedTrip in
+                        if let savedTrip {
+                            store.send(.tripSelected(savedTrip))
+                            self.editStore = nil
+                        }
+                    }
+            }
         }
     }
 
@@ -120,9 +184,9 @@ public struct ItineraryView: View {
             animateTrigger: store.animateTrigger,
             jumpTrigger: store.jumpTrigger,
             focusedItemID: store.trip != nil ? store.selectedItemID : nil,
-            bottomInset: store.trip != nil ? currentListHeight : 0,
             onAnimationCompleted: { store.send(.legAnimationCompleted) },
-            onMarkerTapped: { store.send(.selectStopTapped($0)) }
+            onMarkerTapped: { store.send(.selectStopTapped($0)) },
+            bottomInset: currentListHeight
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea(edges: .bottom)
@@ -312,27 +376,32 @@ public struct ItineraryView: View {
                                 }
                             }
                             // Spacer로 벌어진 빈 공간까지 포함해서 행 전체가 눌리도록.
-                            // 이게 없으면 draggable/contextMenu 제스처와 겹치면서 텍스트가
-                            // 있는 부분만 탭이 먹는 것처럼 보였다.
+                            // 이게 없으면 draggable 제스처와 겹치면서 텍스트가 있는 부분만
+                            // 탭이 먹는 것처럼 보였다.
                             .contentShape(Rectangle())
                             .onTapGesture {
                                 store.send(.selectStopTapped(item.id))
                             }
                             .id(item.id)
                             .draggable(item.id.uuidString)
-                            .contextMenu {
-                                if store.days.count > 1 {
-                                    Menu("다른 날짜로 이동") {
-                                        ForEach(store.days.filter { $0.id != store.selectedDayID }) { day in
-                                            Button("\(day.dayIndex)일차") {
-                                                store.send(.itemDroppedOnDay(item.id, day.id))
-                                            }
-                                        }
+                            .swipeActions(edge: .leading) {
+                                Button {
+                                    store.send(.editItemTapped(item))
+                                } label: {
+                                    Label("수정", systemImage: "pencil")
+                                }
+                                .tint(.blue)
+                            }
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) {
+                                    if let index = store.selectedItems.index(id: item.id) {
+                                        store.send(.deleteItems(IndexSet(integer: index)))
                                     }
+                                } label: {
+                                    Label("삭제", systemImage: "trash")
                                 }
                             }
                         }
-                        .onDelete { store.send(.deleteItems($0)) }
                         .onMove { source, destination in
                             store.send(.itemsMovedWithinDay(source, destination))
                         }
@@ -351,25 +420,6 @@ public struct ItineraryView: View {
                         }
                     }
                 }
-            }
-        }
-        .sheet(
-            isPresented: Binding(
-                get: { addItemFlowStore != nil },
-                set: { isPresented in
-                    if !isPresented { addItemFlowStore = nil }
-                }
-            )
-        ) {
-            if let addItemFlowStore {
-                AddItemFlowView(
-                    store: addItemFlowStore,
-                    onItemAdded: { item in
-                        store.send(.itemAdded(item))
-                        self.addItemFlowStore = nil
-                    },
-                    onCancelled: { self.addItemFlowStore = nil }
-                )
             }
         }
         .confirmationDialog(
@@ -398,4 +448,14 @@ public struct ItineraryView: View {
     }
 
     private var allViewRowID: String { "__all__" }
+}
+
+extension UIApplication {
+    var keyWindowSafeAreaInsets: UIEdgeInsets {
+        guard let scene = connectedScenes.first as? UIWindowScene,
+              let window = scene.windows.first(where: { $0.isKeyWindow }) else {
+            return .zero
+        }
+        return window.safeAreaInsets
+    }
 }

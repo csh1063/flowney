@@ -38,6 +38,8 @@ public struct AddItemFlowFeature {
         // 만들고 바로 `.addItemRequestConsumed`를 보낸다.
         public var addItemRequest: AddItemFeature.State?
 
+        public var isEditing: Bool = false
+
         /// 여행/날짜를 이미 아는 경우(지도 탭 + 버튼) `trip`/`day`/`startingSortOrder`를 모두
         /// 넘기면 네트워크 호출 없이 곧장 폼 단계로 시작한다. 모르는 경우(공유 링크함)는
         /// `nil`로 두면 여행 목록부터 시작한다.
@@ -70,6 +72,18 @@ public struct AddItemFlowFeature {
                 // 스쳐 지나가며 마치 뭔가 눌러야 시작하는 것처럼 보이는 걸 막는다.
                 isLoadingTrips = true
             }
+        }
+
+        public init(editingItem item: ItineraryItem, trip: Trip, day: TripDay) {
+            selectedTrip = trip
+            selectedDay = day
+            defaultTripID = trip.id
+            mode = .manual
+            linkURLText = ""
+            prefillName = ""
+            isEditing = true
+            step = .form
+            addItemRequest = AddItemFeature.State(editing: item, tripID: trip.id, dayID: day.id)
         }
     }
 

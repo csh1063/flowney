@@ -58,7 +58,7 @@ public struct AuthFeature: Sendable {
                     // 안 되게 스쳐 지나간다 — 최소 노출 시간(3초)을 세션 조회와 동시에
                     // 돌려서, 조회가 더 빨리 끝나도 스플래시는 최소 이만큼 보이게 한다.
                     async let sessionResult = authClient.currentSession()
-                    async let minimumSplashDelay: Void? = try? Task.sleep(for: .seconds(3))
+                    async let minimumSplashDelay: Void? = try? Task.sleep(for: .seconds(1))
                     let session = await sessionResult
                     _ = await minimumSplashDelay
                     // 세션이 nil이어도 "확인 결과 없음"을 명시적으로 알려야 스플래시를

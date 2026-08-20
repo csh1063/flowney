@@ -17,16 +17,17 @@ struct RouteMapView: UIViewRepresentable {
     /// "이전" 버튼, 뒤쪽/전체보기 탭, 날짜 경계 이동 — 애니메이션 없이 카메라만 즉시 이동.
     let jumpTrigger: Int
     let focusedItemID: ItineraryItem.ID?
-    /// 하단 리스트 패널의 현재 높이 — 이만큼 지도 아래쪽이 가려져 있다는 뜻이라, 카메라를
-    /// 맞출 때 이 값만큼 아래쪽 inset을 추가로 줘서 실제로 "보이는" 영역 중앙에 오게 한다.
-    let bottomInset: CGFloat
     let onAnimationCompleted: () -> Void
     /// 지도 위 핀을 직접 탭했을 때 — 리스트에서 탭한 것과 동일하게 그 장소로 즉시 줌인한다.
     let onMarkerTapped: (ItineraryItem.ID) -> Void
+    /// 하단 리스트 시트가 지도 위를 덮는 높이. 지도 뷰 자체의 크기는 그대로 두고, 이 값을
+    /// `GMSMapView.padding`으로 넘겨서 카메라 fit/센터링 계산에서만 가려진 영역을 제외한다.
+    var bottomInset: CGFloat = 0
 
     func makeUIView(context: Context) -> GMSMapView {
         let options = GMSMapViewOptions()
         options.camera = GMSCameraPosition.camera(withLatitude: 37.5665, longitude: 126.9780, zoom: 12)
+        options.backgroundColor = WaypinTheme.backgroundUIColor
         let mapView = GMSMapView(options: options)
         mapView.delegate = context.coordinator
         context.coordinator.mapView = mapView
@@ -38,6 +39,7 @@ struct RouteMapView: UIViewRepresentable {
     func updateUIView(_ mapView: GMSMapView, context: Context) {
         context.coordinator.onMarkerTapped = onMarkerTapped
         context.coordinator.applyMapStyle(colorScheme: context.environment.colorScheme)
+        mapView.padding = UIEdgeInsets(top: 0, left: 0, bottom: bottomInset, right: 0)
         context.coordinator.update(
             items: items,
             legs: legs,
@@ -45,7 +47,6 @@ struct RouteMapView: UIViewRepresentable {
             animateTrigger: animateTrigger,
             jumpTrigger: jumpTrigger,
             focusedItemID: focusedItemID,
-            bottomInset: bottomInset,
             onAnimationCompleted: onAnimationCompleted
         )
     }
@@ -143,7 +144,6 @@ struct RouteMapView: UIViewRepresentable {
             animateTrigger: Int,
             jumpTrigger: Int,
             focusedItemID: ItineraryItem.ID?,
-            bottomInset: CGFloat,
             onAnimationCompleted: @escaping () -> Void
         ) {
             guard let mapView else { return }
@@ -154,7 +154,7 @@ struct RouteMapView: UIViewRepresentable {
             let key = items.map(\.id.uuidString).joined(separator: ",") + "|" + legs.map(\.id).joined(separator: ",")
             if key != drawnKey {
                 drawnKey = key
-                redraw(items: items, legs: legs, mapView: mapView, bottomInset: bottomInset)
+                redraw(items: items, legs: legs, mapView: mapView)
             }
 
             updateMarkerStyles(currentStopIndex: currentStopIndex, items: items)
@@ -169,7 +169,7 @@ struct RouteMapView: UIViewRepresentable {
             lastJumpTrigger = jumpTrigger
 
             if shouldAnimate {
-                animateCurrentLeg(items: items, legs: legs, currentStopIndex: currentStopIndex, bottomInset: bottomInset, onAnimationCompleted: onAnimationCompleted)
+                animateCurrentLeg(items: items, legs: legs, currentStopIndex: currentStopIndex, onAnimationCompleted: onAnimationCompleted)
             } else if shouldJump {
                 // 점프(이전 버튼/전체보기/날짜 경계 이동 등)는 새로 채색하지 않는다 — 지금까지
                 // 채색돼 있던 구간이 있으면 그 순간 다시 점선으로 되돌린다.
@@ -177,7 +177,7 @@ struct RouteMapView: UIViewRepresentable {
                     unstyleLeg(highlightedLegID)
                     self.highlightedLegID = nil
                 }
-                jump(to: focusedItemID, items: items, mapView: mapView, bottomInset: bottomInset)
+                jump(to: focusedItemID, items: items, mapView: mapView)
             }
         }
 
@@ -252,7 +252,6 @@ struct RouteMapView: UIViewRepresentable {
             items: IdentifiedArrayOf<ItineraryItem>,
             legs: IdentifiedArrayOf<RouteLeg>,
             currentStopIndex: Int?,
-            bottomInset: CGFloat,
             onAnimationCompleted: @escaping () -> Void
         ) {
             // legs는 "경로 탐색" 전엔 비어있고, 탐색 후에도 fromId-toId 쌍으로만 존재하는
@@ -297,7 +296,6 @@ struct RouteMapView: UIViewRepresentable {
                 leg: leg,
                 from: CLLocationCoordinate2D(latitude: fromLat, longitude: fromLng),
                 to: CLLocationCoordinate2D(latitude: toLat, longitude: toLng),
-                bottomInset: bottomInset,
                 onProgress: { [weak self] fraction in
                     self?.styleLeg(legKey, fraction: fraction)
                 },
@@ -305,20 +303,18 @@ struct RouteMapView: UIViewRepresentable {
             )
         }
 
-        private func jump(to focusedItemID: ItineraryItem.ID?, items: IdentifiedArrayOf<ItineraryItem>, mapView: GMSMapView, bottomInset: CGFloat) {
+        private func jump(to focusedItemID: ItineraryItem.ID?, items: IdentifiedArrayOf<ItineraryItem>, mapView: GMSMapView) {
             guard let focusedItemID, let item = items[id: focusedItemID], let lat = item.lat, let lng = item.lng else {
                 // 전체보기로 돌아간 경우(포커스된 장소 없음) — 오늘 모든 장소가 다 보이게.
-                fitAll(items: items, mapView: mapView, bottomInset: bottomInset)
+                fitAll(items: items, mapView: mapView)
                 return
             }
             let target = CLLocationCoordinate2D(latitude: lat, longitude: lng)
-            let jumpZoom: Float = 15
-            let shifted = Self.shiftCoordinate(target, upBy: bottomInset / 2, zoom: jumpZoom)
-            let camera = GMSCameraPosition.camera(withTarget: shifted, zoom: jumpZoom)
+            let camera = GMSCameraPosition.camera(withTarget: target, zoom: 15)
             mapView.animate(to: camera)
         }
 
-        private func fitAll(items: IdentifiedArrayOf<ItineraryItem>, mapView: GMSMapView, bottomInset: CGFloat) {
+        private func fitAll(items: IdentifiedArrayOf<ItineraryItem>, mapView: GMSMapView) {
             var bounds = GMSCoordinateBounds()
             var hasAny = false
             for item in items {
@@ -327,30 +323,11 @@ struct RouteMapView: UIViewRepresentable {
                 hasAny = true
             }
             guard hasAny else { return }
-            let edgeInsets = UIEdgeInsets(top: 64, left: 64, bottom: 64 + bottomInset, right: 64)
+            let edgeInsets = UIEdgeInsets(top: 64, left: 64, bottom: 64, right: 64)
             mapView.animate(with: GMSCameraUpdate.fit(bounds, with: edgeInsets))
         }
 
-        // 화면상 screenOffset 포인트만큼 "위로" 보이도록, 목표 좌표를 미리 그만큼 밀어서
-        // 돌려준다 — 하단 리스트 패널에 가려지지 않고 실제로 보이는 영역 중앙에 오게 하기 위함.
-        //
-        // 이전엔 `mapView.projection`(카메라를 옮기기 "전"의, 즉 이전 줌 레벨의 투영)을 기준으로
-        // 픽셀→좌표 변환을 했는데, 전체보기(줌아웃) 상태에서 특정 장소로 점프하거나 날짜 경계를
-        // 넘어 완전히 다른 줌 레벨에서 오는 경우 이전 줌과 점프 후 줌(15)이 크게 달라서 같은
-        // screenOffset 픽셀이 실제로는 훨씬 다른 지리적 거리로 계산돼 어긋났다(목표 지점이
-        // 리스트 쪽으로 치우쳐 찍힘). 대신 "점프 후 확정된 줌 레벨" 기준으로 Web Mercator
-        // 미터/픽셀 근사식을 직접 써서, 현재 카메라 상태와 무관하게 항상 같은 결과가 나오도록 한다.
-        private static func shiftCoordinate(_ coordinate: CLLocationCoordinate2D, upBy screenOffset: CGFloat, zoom: Float) -> CLLocationCoordinate2D {
-            guard screenOffset > 1 else { return coordinate }
-            let metersPerPixel = 156_543.03392 * cos(coordinate.latitude * .pi / 180) / pow(2.0, Double(zoom))
-            let shiftMeters = Double(screenOffset) * metersPerPixel
-            let shiftLatDegrees = shiftMeters / 111_320.0
-            // 화면 아래쪽(리스트)에서 멀어지도록 목표보다 남쪽을 카메라 중심으로 삼으면,
-            // 목표 지점은 상대적으로 화면 위쪽(북쪽 방향)에 나타난다.
-            return CLLocationCoordinate2D(latitude: coordinate.latitude - shiftLatDegrees, longitude: coordinate.longitude)
-        }
-
-        private func redraw(items: IdentifiedArrayOf<ItineraryItem>, legs: IdentifiedArrayOf<RouteLeg>, mapView: GMSMapView, bottomInset: CGFloat) {
+        private func redraw(items: IdentifiedArrayOf<ItineraryItem>, legs: IdentifiedArrayOf<RouteLeg>, mapView: GMSMapView) {
             markers.forEach { $0.map = nil }
             legPolylineGroups.values.forEach { group in group.segments.forEach { $0.polyline.map = nil } }
             alternativePolylines.forEach { $0.map = nil }
@@ -363,7 +340,7 @@ struct RouteMapView: UIViewRepresentable {
             highlightedLegID = nil
 
             for (index, item) in items.enumerated() {
-                guard let lat = item.lat, let lng = item.lng else { continue }
+                guard let lat = item.lat, let lng = item.lng, lat.isFinite, lng.isFinite else { continue }
                 let position = CLLocationCoordinate2D(latitude: lat, longitude: lng)
                 let marker = GMSMarker(position: position)
                 marker.title = "\(index + 1). \(item.name)"
@@ -387,7 +364,8 @@ struct RouteMapView: UIViewRepresentable {
                 let toItem = items[index + 1]
                 guard
                     let fLat = fromItem.lat, let fLng = fromItem.lng,
-                    let tLat = toItem.lat, let tLng = toItem.lng
+                    let tLat = toItem.lat, let tLng = toItem.lng,
+                    fLat.isFinite, fLng.isFinite, tLat.isFinite, tLng.isFinite
                 else { continue }
 
                 let leg = legs[id: "\(fromItem.id)-\(toItem.id)"]
@@ -448,7 +426,7 @@ struct RouteMapView: UIViewRepresentable {
                 }
             }
 
-            fitAll(items: items, mapView: mapView, bottomInset: bottomInset)
+            fitAll(items: items, mapView: mapView)
         }
 
         // leg 하나를 step 단위로 나눠서, 실제 탄 구간(TRANSIT)은 노선색(또는 이동수단 기본색),
@@ -619,16 +597,21 @@ struct RouteMapView: UIViewRepresentable {
         }
 
         private static func setDashSpans(on polyline: GMSPolyline, path: GMSPath, zoom: Float) {
+            guard zoom.isFinite else { return }
+
             let pathLength = path.length(of: .rhumb)
             guard pathLength > 1 else { return }
 
             let latitude = path.coordinate(at: 0).latitude
+            guard latitude.isFinite else { return }
+
             let metersPerPixel = 156_543.03392 * cos(latitude * .pi / 180) / pow(2.0, Double(zoom))
             let screenScaledLength = dashScreenLength * metersPerPixel
             let estimatedSpanCount = pathLength / (screenScaledLength * 2)
             let dashLength = estimatedSpanCount > maxDashSpanCount
                 ? max(pathLength / maxDashSpanCount, 1)
                 : max(screenScaledLength, 1)
+            guard dashLength.isFinite, dashLength > 0 else { return }
 
             let styles = [GMSStrokeStyle.solidColor(paletteColor(.walk)), GMSStrokeStyle.solidColor(.clear)]
             polyline.spans = GMSStyleSpans(path, styles, [NSNumber(value: dashLength), NSNumber(value: dashLength)], .rhumb)

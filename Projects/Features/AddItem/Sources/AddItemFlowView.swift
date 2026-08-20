@@ -60,7 +60,7 @@ public struct AddItemFlowView: View {
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
             .animation(.easeInOut(duration: 0.3), value: store.step)
-            .navigationTitle("일정 추가")
+            .navigationTitle(store.isEditing ? "일정 수정" : "일정 추가")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -77,30 +77,37 @@ public struct AddItemFlowView: View {
                         if let addItemStore, addItemStore.isSaving {
                             ProgressView()
                         } else {
-                            Button("추가") { addItemStore?.send(.saveButtonTapped) }
+                            Button(store.isEditing ? "수정" : "추가") { addItemStore?.send(.saveButtonTapped) }
                         }
                     }
                 }
             }
         }
-        .onAppear { store.send(.onAppear) }
-        .onChange(of: store.addItemRequest) { _, newRequest in
-            guard let newRequest else { return }
-            if let addItemStore {
-                addItemStore.send(.contextChanged(
-                    tripID: newRequest.tripID,
-                    dayID: newRequest.dayID,
-                    startingSortOrder: newRequest.startingSortOrder
-                ))
-            } else {
-                addItemStore = Store(initialState: newRequest) { AddItemFeature() }
-            }
-            store.send(.addItemRequestConsumed)
+        .onAppear {
+            store.send(.onAppear)
+            consumeAddItemRequestIfNeeded()
+        }
+        .onChange(of: store.addItemRequest) { _, _ in
+            consumeAddItemRequestIfNeeded()
         }
         .onChange(of: addItemStore?.savedItem) { _, savedItem in
             guard let savedItem else { return }
             onItemAdded(savedItem)
         }
+    }
+
+    private func consumeAddItemRequestIfNeeded() {
+        guard let newRequest = store.addItemRequest else { return }
+        if let addItemStore {
+            addItemStore.send(.contextChanged(
+                tripID: newRequest.tripID,
+                dayID: newRequest.dayID,
+                startingSortOrder: newRequest.startingSortOrder
+            ))
+        } else {
+            addItemStore = Store(initialState: newRequest) { AddItemFeature() }
+        }
+        store.send(.addItemRequestConsumed)
     }
 
     private var dayText: String? {

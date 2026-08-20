@@ -1,0 +1,595 @@
+<title>Waypin Design System</title>
+<style>
+  :root {
+    --brand-navy: #2C3E50;
+    --brand-gold: #C9A24B;
+    --brand-gold-light: #F0D48A;
+
+    --accent: #2C3E50;
+    --accent-label: #FFFFFF;
+    --background: #EFE8DA;
+    --surface: #FFFFFF;
+    --text-primary: #1F2A33;
+    --text-secondary: #6B7580;
+    --divider: #E3DED2;
+    --success: #2F8F5B;
+    --warning: #C98A2B;
+    --error: #C0392B;
+
+    --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Menlo", "Cascadia Mono", monospace;
+
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-pill: 999px;
+
+    --sp-xs: 4px;
+    --sp-sm: 8px;
+    --sp-md: 12px;
+    --sp-lg: 16px;
+    --sp-xl: 24px;
+    --sp-xxl: 32px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --accent: #E8C97A;
+      --accent-label: #14181D;
+      --background: #14181D;
+      --surface: #1E262E;
+      --text-primary: #F3EFE7;
+      --text-secondary: #B9AFA0;
+      --divider: #333F49;
+      --success: #4FBF8A;
+      --warning: #E0A94A;
+      --error: #E0685A;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --accent: #E8C97A;
+    --accent-label: #14181D;
+    --background: #14181D;
+    --surface: #1E262E;
+    --text-primary: #F3EFE7;
+    --text-secondary: #B9AFA0;
+    --divider: #333F49;
+    --success: #4FBF8A;
+    --warning: #E0A94A;
+    --error: #E0685A;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--text-primary);
+    font-family: var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: var(--sp-xxl) var(--sp-lg) 96px;
+  }
+
+  /* ---------- Header ---------- */
+
+  .header {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-lg);
+    padding-bottom: var(--sp-xl);
+    margin-bottom: var(--sp-xl);
+    border-bottom: 1px solid var(--divider);
+  }
+
+  .mark { flex: none; }
+
+  .header-text h1 {
+    margin: 0 0 4px;
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  .header-text p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 1.6;
+    max-width: 60ch;
+  }
+
+  .header-text .tag {
+    display: inline-block;
+    margin-top: var(--sp-sm);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    border-radius: var(--radius-pill);
+    padding: 3px 10px;
+  }
+
+  /* ---------- Sections ---------- */
+
+  section { margin-top: var(--sp-xxl); }
+
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--sp-md);
+    margin-bottom: var(--sp-lg);
+  }
+
+  .section-head h2 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+
+  .section-head .note {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+  }
+
+  /* ---------- Color tokens ---------- */
+
+  .color-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: var(--sp-md);
+  }
+
+  .color-card {
+    background: var(--surface);
+    border: 1px solid var(--divider);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .color-card .swatch {
+    height: 56px;
+    display: flex;
+  }
+
+  .color-card .swatch span {
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    padding: 6px 8px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.02em;
+  }
+
+  .color-card .meta {
+    padding: var(--sp-sm) var(--sp-md) var(--sp-md);
+  }
+
+  .color-card .meta .name {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .color-card .meta .desc {
+    margin-top: 2px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  /* ---------- Typography ---------- */
+
+  .type-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .type-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--sp-lg);
+    padding: var(--sp-lg) 0;
+    border-bottom: 1px solid var(--divider);
+  }
+
+  .type-row:last-child { border-bottom: none; }
+
+  .type-row .sample { color: var(--text-primary); text-wrap: balance; }
+
+  .type-row .label {
+    flex: none;
+    text-align: right;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+  }
+
+  .type-row .label b {
+    display: block;
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 12px;
+  }
+
+  .t-screenTitle { font-size: 22px; font-weight: 700; }
+  .t-sectionHeader { font-size: 17px; font-weight: 600; }
+  .t-body { font-size: 17px; font-weight: 400; }
+  .t-bodyEmphasis { font-size: 17px; font-weight: 600; }
+  .t-caption { font-size: 12px; font-weight: 400; color: var(--text-secondary); }
+  .t-captionEmphasis { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+  .t-numeric { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  /* ---------- Spacing ---------- */
+
+  .spacing-list { display: flex; flex-direction: column; gap: var(--sp-md); }
+
+  .spacing-row { display: flex; align-items: center; gap: var(--sp-lg); }
+
+  .spacing-row .label {
+    width: 40px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .spacing-row .bar { height: 12px; background: var(--accent); border-radius: 2px; }
+
+  .spacing-row .px {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  /* ---------- Radius ---------- */
+
+  .radius-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--sp-lg);
+  }
+
+  .radius-item { display: flex; flex-direction: column; align-items: center; gap: var(--sp-sm); }
+
+  .radius-item .box {
+    width: 100%;
+    aspect-ratio: 1;
+    max-width: 84px;
+    background: var(--accent);
+  }
+
+  .radius-item .label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-align: center;
+  }
+
+  /* ---------- Card example ---------- */
+
+  .waypin-card {
+    background: var(--surface);
+    border: 1px solid var(--divider);
+    border-radius: var(--radius-lg);
+    padding: var(--sp-md);
+    max-width: 320px;
+  }
+
+  .waypin-card .name { font-size: 17px; font-weight: 600; }
+  .waypin-card .dates { margin-top: 2px; font-size: 12px; color: var(--text-secondary); }
+
+  /* ---------- Buttons / status ---------- */
+
+  .component-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--sp-md);
+  }
+
+  .btn-primary {
+    appearance: none;
+    border: none;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--accent-label);
+    background: var(--accent);
+    border-radius: var(--radius-md);
+    padding: 14px 28px;
+    cursor: pointer;
+  }
+
+  .btn-primary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: var(--radius-pill);
+    padding: 3px 10px;
+  }
+
+  /* ---------- Country palette ---------- */
+
+  .country-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: var(--sp-sm);
+  }
+
+  .country-chip {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
+    background: var(--surface);
+    border: 1px solid var(--divider);
+    border-radius: var(--radius-sm);
+    padding: 6px 8px;
+  }
+
+  .country-chip .dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 5px;
+    flex: none;
+  }
+
+  .country-chip .info { min-width: 0; }
+  .country-chip .info .n { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .country-chip .info .c { font-family: var(--font-mono); font-size: 10px; color: var(--text-secondary); }
+
+  /* ---------- Map style ---------- */
+
+  .map-strip {
+    display: flex;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 1px solid var(--divider);
+  }
+
+  .map-strip .seg { flex: 1; height: 72px; position: relative; }
+  .map-strip .seg .lbl {
+    position: absolute;
+    left: 8px;
+    bottom: 6px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: rgba(255,255,255,0.85);
+  }
+
+  footer {
+    margin-top: 64px;
+    padding-top: var(--sp-lg);
+    border-top: 1px solid var(--divider);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+
+  @media (max-width: 560px) {
+    .radius-grid { grid-template-columns: repeat(2, 1fr); }
+    .type-row { flex-direction: column; align-items: flex-start; }
+    .type-row .label { text-align: left; }
+  }
+</style>
+
+<div class="page">
+
+  <header class="header">
+    <svg class="mark" width="60" height="60" viewBox="0 0 96 96" role="img" aria-label="Waypin 마크">
+      <rect x="4" y="4" width="88" height="88" rx="22" fill="none" stroke="var(--brand-gold)" stroke-width="4"/>
+      <circle cx="48" cy="48" r="28" fill="var(--brand-gold)"/>
+      <path d="M48 27c-9.4 0-17 7.5-17 16.7C31 55.6 48 72 48 72s17-16.4 17-28.3C65 34.5 57.4 27 48 27z" fill="var(--brand-navy)"/>
+      <circle cx="48" cy="43.5" r="5.5" fill="var(--brand-gold)"/>
+    </svg>
+    <div class="header-text">
+      <h1>Waypin Design System</h1>
+      <p>iOS 여행 일정 앱 Waypin의 색·타이포·여백·컴포넌트 토큰 레퍼런스. SwiftUI <code style="font-family: var(--font-mono); font-size: 12px;">WaypinTheme</code> / <code style="font-family: var(--font-mono); font-size: 12px;">WaypinFont</code> 소스와 1:1로 대응한다.</p>
+      <span class="tag">라이트/다크 자동 대응 · OS 테마 전환 시 이 페이지도 같이 바뀝니다</span>
+    </div>
+  </header>
+
+  <!-- Colors -->
+  <section>
+    <div class="section-head">
+      <h2>색상 · WaypinTheme</h2>
+      <span class="note">light → dark</span>
+    </div>
+    <div class="color-grid" id="colorGrid"></div>
+  </section>
+
+  <!-- Typography -->
+  <section>
+    <div class="section-head">
+      <h2>타이포그래피 · WaypinFont</h2>
+      <span class="note">system text style 기반, Dynamic Type 대응</span>
+    </div>
+    <div class="type-list">
+      <div class="type-row"><span class="sample t-screenTitle">여행의 모든 순간</span><span class="label"><b>screenTitle</b>title2 · bold</span></div>
+      <div class="type-row"><span class="sample t-sectionHeader">여행의 모든 순간</span><span class="label"><b>sectionHeader</b>headline · semibold</span></div>
+      <div class="type-row"><span class="sample t-body">여행의 모든 순간</span><span class="label"><b>body</b>body · regular</span></div>
+      <div class="type-row"><span class="sample t-bodyEmphasis">여행의 모든 순간</span><span class="label"><b>bodyEmphasis</b>body · semibold</span></div>
+      <div class="type-row"><span class="sample t-caption">여행의 모든 순간</span><span class="label"><b>caption</b>caption · regular</span></div>
+      <div class="type-row"><span class="sample t-captionEmphasis">여행의 모든 순간</span><span class="label"><b>captionEmphasis</b>caption2 · semibold</span></div>
+      <div class="type-row"><span class="sample t-numeric">₩1,234,000</span><span class="label"><b>numeric</b>body · rounded · semibold</span></div>
+    </div>
+  </section>
+
+  <!-- Spacing -->
+  <section>
+    <div class="section-head">
+      <h2>여백 스케일 · WaypinSpacing</h2>
+      <span class="note">4pt 그리드</span>
+    </div>
+    <div class="spacing-list" id="spacingList"></div>
+  </section>
+
+  <!-- Radius -->
+  <section>
+    <div class="section-head">
+      <h2>코너 radius · WaypinRadius</h2>
+    </div>
+    <div class="radius-grid">
+      <div class="radius-item"><div class="box" style="border-radius: var(--radius-sm);"></div><span class="label">sm · 8pt</span></div>
+      <div class="radius-item"><div class="box" style="border-radius: var(--radius-md);"></div><span class="label">md · 12pt</span></div>
+      <div class="radius-item"><div class="box" style="border-radius: var(--radius-lg);"></div><span class="label">lg · 16pt</span></div>
+      <div class="radius-item"><div class="box" style="border-radius: var(--radius-pill);"></div><span class="label">pill · 999pt</span></div>
+    </div>
+  </section>
+
+  <!-- Card -->
+  <section>
+    <div class="section-head">
+      <h2>카드 · .waypinCard()</h2>
+      <span class="note">surface 채움 + divider 1px 테두리 + radius lg</span>
+    </div>
+    <div class="waypin-card">
+      <div class="name">여행 이름</div>
+      <div class="dates">2026.09.19 – 2026.10.03</div>
+    </div>
+  </section>
+
+  <!-- Buttons / status -->
+  <section>
+    <div class="section-head">
+      <h2>버튼 &amp; 상태 배지</h2>
+      <span class="note">PrimaryButtonStyle · StatusPill</span>
+    </div>
+    <div class="component-row" style="margin-bottom: var(--sp-lg);">
+      <button class="btn-primary">여행 추가하기</button>
+    </div>
+    <div class="component-row" id="pillRow"></div>
+  </section>
+
+  <!-- Country palette -->
+  <section>
+    <div class="section-head">
+      <h2>국가 팔레트 · CountryCatalog</h2>
+      <span class="note">지도 탭 국가 띠 · 여행 생성 시 국가 색</span>
+    </div>
+    <div class="country-grid" id="countryGrid"></div>
+  </section>
+
+  <!-- Map style -->
+  <section>
+    <div class="section-head">
+      <h2>지도 다크 스타일 · RouteMapView</h2>
+      <span class="note">Google Maps 커스텀 JSON 스타일</span>
+    </div>
+    <div class="map-strip">
+      <div class="seg" style="background:#242f3e;"><span class="lbl">geometry</span></div>
+      <div class="seg" style="background:#17263c;"><span class="lbl">water</span></div>
+      <div class="seg" style="background:#263c3f;"><span class="lbl">park</span></div>
+      <div class="seg" style="background:#38414e;"><span class="lbl">road</span></div>
+      <div class="seg" style="background:#746855;"><span class="lbl">highway</span></div>
+      <div class="seg" style="background:#2f3948;"><span class="lbl">transit</span></div>
+    </div>
+  </section>
+
+  <footer>Projects/Core/DesignSystem — 이 페이지는 실제 소스 값에서 만들었지만 정적 스냅샷입니다. 토큰이 바뀌면 다시 생성해주세요.</footer>
+
+</div>
+
+<script>
+  const colors = [
+    { name: "accent", desc: "주요 액션 · 라이트=네이비 / 다크=골드", light: "#2C3E50", dark: "#E8C97A" },
+    { name: "accentLabel", desc: "accent 배경 위 글자색", light: "#FFFFFF", dark: "#14181D" },
+    { name: "brandNavy", desc: "고정 브랜드색 (모드 무관)", light: "#2C3E50", dark: "#2C3E50" },
+    { name: "brandGold", desc: "고정 브랜드색 (모드 무관)", light: "#C9A24B", dark: "#C9A24B" },
+    { name: "background", desc: "화면 배경", light: "#EFE8DA", dark: "#14181D" },
+    { name: "surface", desc: "카드/리스트 행 배경", light: "#FFFFFF", dark: "#1E262E" },
+    { name: "textPrimary", desc: "본문 글자색", light: "#1F2A33", dark: "#F3EFE7" },
+    { name: "textSecondary", desc: "보조 글자색", light: "#6B7580", dark: "#B9AFA0" },
+    { name: "divider", desc: "구분선 · 카드 테두리", light: "#E3DED2", dark: "#333F49" },
+    { name: "success", desc: "결제완료 등 긍정 상태", light: "#2F8F5B", dark: "#4FBF8A" },
+    { name: "warning", desc: "미정/가격변동 등 주의 상태", light: "#C98A2B", dark: "#E0A94A" },
+    { name: "error", desc: "에러/삭제", light: "#C0392B", dark: "#E0685A" },
+  ];
+
+  const colorGrid = document.getElementById("colorGrid");
+  for (const c of colors) {
+    const card = document.createElement("div");
+    card.className = "color-card";
+    card.innerHTML = `
+      <div class="swatch">
+        <span style="background:${c.light}; color:${readableOn(c.light)};">${c.light}</span>
+        <span style="background:${c.dark}; color:${readableOn(c.dark)};">${c.dark}</span>
+      </div>
+      <div class="meta">
+        <div class="name">${c.name}</div>
+        <div class="desc">${c.desc}</div>
+      </div>`;
+    colorGrid.appendChild(card);
+  }
+
+  function readableOn(hex) {
+    const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+    const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+    return yiq >= 150 ? "rgba(0,0,0,0.6)" : "rgba(255,255,255,0.85)";
+  }
+
+  const spacing = [
+    ["xs", 4], ["sm", 8], ["md", 12], ["lg", 16], ["xl", 24], ["xxl", 32],
+  ];
+  const spacingList = document.getElementById("spacingList");
+  for (const [label, px] of spacing) {
+    const row = document.createElement("div");
+    row.className = "spacing-row";
+    row.innerHTML = `<span class="label">${label}</span><span class="bar" style="width:${px * 3}px;"></span><span class="px">${px}pt</span>`;
+    spacingList.appendChild(row);
+  }
+
+  const pills = [
+    { text: "결제완료", color: "var(--success)" },
+    { text: "가격확정", color: "var(--accent)" },
+    { text: "미정", color: "var(--warning)" },
+    { text: "가격변동", color: "var(--warning)" },
+    { text: "패스포함", color: "var(--accent)" },
+    { text: "무료", color: "var(--text-secondary)" },
+  ];
+  const pillRow = document.getElementById("pillRow");
+  for (const p of pills) {
+    const el = document.createElement("span");
+    el.className = "pill";
+    el.style.color = p.color;
+    el.style.background = `color-mix(in srgb, ${p.color} 15%, transparent)`;
+    el.textContent = p.text;
+    pillRow.appendChild(el);
+  }
+
+  const countries = [
+    ["KR","대한민국","#2c3e50"],["JP","일본","#b8202e"],["CN","중국","#c8452e"],["TW","대만","#1e88a8"],
+    ["HK","홍콩","#8e44ad"],["TH","태국","#e67e22"],["VN","베트남","#c0392b"],["SG","싱가포르","#16a085"],
+    ["MY","말레이시아","#27ae60"],["PH","필리핀","#2980b9"],["ID","인도네시아","#d35400"],["NL","네덜란드","#c8452e"],
+    ["FR","프랑스","#1e3a5f"],["CH","스위스","#b8202e"],["DE","독일","#34495e"],["IT","이탈리아","#27ae60"],
+    ["ES","스페인","#e74c3c"],["PT","포르투갈","#16a085"],["AT","오스트리아","#8e44ad"],["BE","벨기에","#f39c12"],
+    ["GB","영국","#2c3e50"],["IE","아일랜드","#27ae60"],["GR","그리스","#2980b9"],["TR","튀르키예","#c0392b"],
+    ["CZ","체코","#34495e"],["HU","헝가리","#c8452e"],["PL","폴란드","#e74c3c"],["NO","노르웨이","#1e3a5f"],
+    ["SE","스웨덴","#2980b9"],["FI","핀란드","#8e44ad"],["IS","아이슬란드","#16a085"],["US","미국","#2c3e50"],
+    ["CA","캐나다","#c0392b"],["MX","멕시코","#27ae60"],["AU","호주","#f39c12"],["NZ","뉴질랜드","#2980b9"],
+    ["AE","아랍에미리트","#d35400"],
+  ];
+  const countryGrid = document.getElementById("countryGrid");
+  for (const [code, name, hex] of countries) {
+    const chip = document.createElement("div");
+    chip.className = "country-chip";
+    chip.innerHTML = `<span class="dot" style="background:${hex};"></span><span class="info"><div class="n">${name}</div><div class="c">${code} · ${hex}</div></span>`;
+    countryGrid.appendChild(chip);
+  }
+</script>

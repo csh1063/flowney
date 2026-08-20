@@ -40,6 +40,7 @@ public enum WaypinTheme {
     // 처음엔 #F7F4EE였는데 surface(흰색)랑 차이가 너무 미묘해서 실기기에서 안 바뀐 것처럼
     // 보였다 — surface와 뚜렷이 구분되도록 더 진한 톤으로 조정.
     public static let background = Color(light: "#EFE8DA", dark: "#14181D")
+    public static let backgroundUIColor = UIColor(light: "#EFE8DA", dark: "#14181D")
     public static let surface = Color(light: "#FFFFFF", dark: "#1E262E")
 
     public static let textPrimary = Color(light: "#1F2A33", dark: "#F3EFE7")
