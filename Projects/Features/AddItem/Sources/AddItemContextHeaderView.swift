@@ -1,9 +1,6 @@
 import DesignSystem
 import SwiftUI
 
-/// 일정 추가 마법사 최상단에 항상 떠 있는 "여행 / 날짜" 헤더. 두 줄 다 탭하면 각자의 선택
-/// 화면이 다시 뜬다 — 이미 값이 채워진 상태에서도 마찬가지라, 폼을 채우다가도 대상 여행/날짜를
-/// 바꿀 수 있다.
 struct AddItemContextHeaderView: View {
     let tripName: String?
     let dayText: String?

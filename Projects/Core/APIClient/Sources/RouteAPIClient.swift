@@ -24,11 +24,20 @@ public enum RouteAPIError: Error, Equatable {
     case requestFailed
 }
 
-/// mock-serverless의 `POST /api/travel/route/day`를 호출해서 하루치 일정의 구간별
-/// 실제 경로(폴리라인)를 한 번에 받아온다.
+public enum RouteRefreshScope: String, Encodable, Sendable {
+    case all
+    case today
+}
+
+public struct RefreshedDayLegs: Decodable, Sendable {
+    public var dayId: TripDay.ID
+    public var legs: [RouteLeg]
+}
+
 @DependencyClient
 public struct RouteAPIClient: Sendable {
     public var fetchDayRoutes: @Sendable (_ items: [RouteLegRequestItem]) async throws -> [RouteLeg]
+    public var refreshTripRoutes: @Sendable (_ tripId: Trip.ID, _ dayId: TripDay.ID?, _ scope: RouteRefreshScope) async throws -> [RefreshedDayLegs]
 }
 
 extension RouteAPIClient: DependencyKey {
@@ -58,6 +67,37 @@ extension RouteAPIClient: DependencyKey {
 
                 let decoded = try JSONDecoder().decode(RouteDayResponse.self, from: data)
                 return decoded.legs
+            },
+            refreshTripRoutes: { tripId, dayId, scope in
+                guard let endpoint = URL(string: "https://mock-serverless.vercel.app/api/travel/trip/route/refresh") else {
+                    throw RouteAPIError.invalidEndpoint
+                }
+                guard let session = try? await SupabaseClientProvider.shared.auth.session else {
+                    throw RouteAPIError.notSignedIn
+                }
+
+                struct Body: Encodable {
+                    let tripId: Trip.ID
+                    let dayId: TripDay.ID?
+                    let scope: RouteRefreshScope
+                }
+
+                var request = URLRequest(url: endpoint)
+                request.httpMethod = "POST"
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+                request.httpBody = try JSONEncoder().encode(Body(tripId: tripId, dayId: dayId, scope: scope))
+
+                let (data, response) = try await URLSession.shared.data(for: request)
+                guard
+                    let httpResponse = response as? HTTPURLResponse,
+                    (200 ..< 300).contains(httpResponse.statusCode)
+                else {
+                    throw RouteAPIError.requestFailed
+                }
+
+                let decoded = try JSONDecoder().decode(RouteRefreshResponse.self, from: data)
+                return decoded.days
             }
         )
     }()
@@ -65,6 +105,10 @@ extension RouteAPIClient: DependencyKey {
 
 private struct RouteDayResponse: Decodable {
     let legs: [RouteLeg]
+}
+
+private struct RouteRefreshResponse: Decodable {
+    let days: [RefreshedDayLegs]
 }
 
 extension DependencyValues {

@@ -7,7 +7,6 @@ public enum TripStatus: String, Codable, Sendable, CaseIterable {
     case archived
 }
 
-/// `itinerary_items.item_type`
 public enum ItemType: String, Codable, Sendable, CaseIterable {
     case start
     case sight
@@ -48,7 +47,6 @@ public enum ItemType: String, Codable, Sendable, CaseIterable {
     }
 }
 
-/// `itinerary_items.arrival_mode` — 이 항목에 "도착할 때" 사용한 교통수단.
 public enum TransportMode: String, Codable, Sendable, CaseIterable {
     case start
     case walk
@@ -60,8 +58,6 @@ public enum TransportMode: String, Codable, Sendable, CaseIterable {
     case funicular
     case car
     case boat
-    /// 산악 톱니바퀴 열차(융프라우요흐 구간 등) — 구글 Directions가 별도 vehicle type으로
-    /// 구분해주지 않아 실제 경로탐색 결과로는 절대 나오지 않고, 수동으로만 지정된다.
     case cograil
 
     public var displayName: String {
@@ -80,8 +76,6 @@ public enum TransportMode: String, Codable, Sendable, CaseIterable {
         }
     }
 
-    /// html의 MODE_DURATION(ms)에서 출발은 그대로 두고, 도보는 1.2초로, 그 외(환승 대기
-    /// 시간 제외)는 각각 0.2초씩 줄인 값.
     public var baseAnimationDurationMs: Double {
         switch self {
         case .start: return 300
@@ -96,7 +90,6 @@ public enum TransportMode: String, Codable, Sendable, CaseIterable {
     }
 }
 
-/// `itinerary_items.source`
 public enum ItemSource: String, Codable, Sendable, CaseIterable {
     case manual
     case link
@@ -104,7 +97,6 @@ public enum ItemSource: String, Codable, Sendable, CaseIterable {
     case reuse
 }
 
-/// `itinerary_items.cost_category`
 public enum CostCategory: String, Codable, Sendable, CaseIterable {
     case entrance
     case transport
@@ -127,7 +119,6 @@ public enum CostCategory: String, Codable, Sendable, CaseIterable {
     }
 }
 
-/// `itinerary_items.payment_status` — travel_map.html의 결제완료/가격확정/미정/가격변동/패스포함/무료 pill과 1:1.
 public enum PaymentStatus: String, Codable, Sendable, CaseIterable {
     case paid
     case fixed

@@ -1,6 +1,5 @@
 import Foundation
 
-/// 여행 국가 선택 및 국가별 지도/탭 색상(travel_map.html의 country color 개념)에 쓰이는 카탈로그.
 public struct CountryOption: Identifiable, Equatable, Sendable {
     public var code: String
     public var name: String
@@ -60,7 +59,6 @@ public enum CountryCatalog {
         all.first { $0.code == code }
     }
 
-    /// ISO 국가코드(예: "FR")를 지역 표시 기호(regional indicator)로 바꿔서 국기 이모지를 만든다.
     public static func flagEmoji(for code: String) -> String {
         let base: UInt32 = 127_397
         var scalars = String.UnicodeScalarView()

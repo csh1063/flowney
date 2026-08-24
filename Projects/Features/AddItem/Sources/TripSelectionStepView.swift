@@ -4,13 +4,8 @@ import Models
 import SwiftUI
 import TripEdit
 
-/// 일정 추가 마법사 1단계 — 여행 목록. `TripListView`와 겉모습은 같지만(같은
-/// `TripSummaryRowView` 셀 + "+ 여행 추가하기" 셀), 고르기/새로 만들기 전용으로 가볍게
-/// 새로 짰다(툴바·스와이프 삭제 등 화면 전용 요소는 없음).
 struct TripSelectionStepView: View {
     @Bindable var store: StoreOf<AddItemFlowFeature>
-    // `@Presents`/`ifLet` 대신 View가 직접 Store를 소유하는 이 프로젝트의 공통 패턴
-    // (TripListView와 동일).
     @State private var editStore: StoreOf<TripEditFeature>?
 
     var body: some View {

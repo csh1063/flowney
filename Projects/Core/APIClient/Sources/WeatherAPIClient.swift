@@ -7,15 +7,8 @@ public enum WeatherAPIError: Error, Equatable {
     case noData
 }
 
-/// Open-Meteo를 직접 호출한다(무료 공개 API라 인증/서버 프록시 불필요).
-/// `travel_map.html`의 `fetchWeatherRange`를 이식: 오늘부터 15일 이내면 예보(forecast) API,
-/// 그 밖이면 최근 3년(2022~2024) 같은 날짜의 평균(archive API)을 쓴다. 같은 위치(도시)에 머무는
-/// 날짜들은 하루하루 따로 부르지 않고 시작~끝 날짜를 한 번의 range 요청으로 묶어서 부른다 —
-/// Open-Meteo는 `start_date`/`end_date`로 여러 날짜를 한 응답에 배열로 돌려준다.
 @DependencyClient
 public struct WeatherAPIClient: Sendable {
-    /// `dates`는 같은 좌표(도시)에 머무는 연속된 날짜들. 결과는 "yyyy-MM-dd" 문자열을 키로 하는
-    /// 딕셔너리로 돌아온다.
     public var fetchWeatherRange: @Sendable (_ lat: Double, _ lng: Double, _ dates: [Date]) async throws -> [String: DayWeather]
 }
 
@@ -147,7 +140,6 @@ extension WeatherAPIClient: DependencyKey {
         return result
     }
 
-    /// 월/일은 유지하고 연도만 `year`로 바꾼다. 2/29처럼 그 해에 없는 날짜면 nil.
     private static func remapped(date: Date, toYear year: Int, calendar: Calendar) -> Date? {
         var components = calendar.dateComponents([.month, .day], from: date)
         components.year = year

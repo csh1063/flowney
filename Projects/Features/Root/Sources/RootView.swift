@@ -15,27 +15,15 @@ public struct RootView: View {
 
     @Bindable var store: StoreOf<AppFeature>
 
-    // 탭(지도/요금표) 간에 "지금 보고 있는 여행"을 공유하는 상태. TCA `@Presents`/`ifLet`
-    // 대신 순수 SwiftUI `@State` + 독립 Store로 관리한다 — `TripListView`의 `editStore`와
-    // 같은 이유(이 툴체인에서 `@Presents`가 실기기 EXC_BAD_ACCESS를 유발했던 전례,
-    // project_tca_presents_crash 참고).
     @State private var currentTrip: Trip?
-    // 지도 탭은 이제 상시 존재하는 화면이라(예전엔 여행을 고를 때만 만들어졌음) Store도
-    // 처음부터 trip 없이 만들어서 계속 살아있게 한다 — 여행을 고르면 이 Store에
-    // `.tripSelected`를 보내서 채워 넣지, Store 자체를 새로 갈아끼우지 않는다.
     @State private var itineraryStore = Store(initialState: ItineraryFeature.State()) {
         ItineraryFeature()
     }
     @State private var budgetStore: StoreOf<BudgetFeature>?
     @State private var isTripLoaderPresented = false
-    // 탭 순서는 리스트/지도/요금표/마이페이지지만, 처음 열리는 화면은 항상 지도여야 한다.
     @State private var selectedTab: Tab = .map
-    // 마이페이지에서 하위 페이지(계정정보/공유링크함)로 들어가있는 동안은 떠 있는 탭바를
-    // 숨긴다 — MyPageView가 이 값을 올려보낸다.
     @State private var isMyPageSubpagePresented = false
     @State private var floatingTabBarHeight: CGFloat = 0
-    // 공유 익스텐션으로 링크를 저장한 뒤 앱을 다시 켜면, 그 첫 실행에서만 한 번
-    // 공유링크함을 자동으로 열어준다.
     @State private var shouldAutoOpenShareInbox = false
 
     public init(store: StoreOf<AppFeature>) {
@@ -43,13 +31,8 @@ public struct RootView: View {
     }
 
     public var body: some View {
-        // `AccentColor.colorset`만 믿었더니 실기기에서 내비게이션 바 버튼(뒤로가기/취소/저장
-        // 등)이 여전히 기본 파란색으로 보이는 문제가 있었다 — 자산 카탈로그 이름 매칭만으로는
-        // 왜인지 전역 tint가 100% 안 먹혀서, 루트에서 명시적으로 한 번 더 강제한다.
         content
             .tint(WaypinTheme.accent)
-            // 세션 확인은 특정 화면(로그인 화면 등)의 onAppear가 아니라 여기서 무조건 한 번
-            // 시작한다 — 그래야 어느 화면이 뜨기도 전에 스플래시 단계에서부터 확인이 진행된다.
             .onAppear { store.send(.auth(.onAppear)) }
     }
 
@@ -58,13 +41,6 @@ public struct RootView: View {
         if store.auth.isCheckingSession {
             SplashView()
         } else if store.auth.isSignedIn {
-            // 네이티브 탭바는 완전히 숨기고, 화면 위에 떠 있는 느낌의 둥근 커스텀 탭바를
-            // 직접 그린다 — 일정 리스트 시트가 창 레벨 모달이라 뜨는 순간 이 위로도 자연스레
-            // 덮이기 때문에, 시트 열릴 때 따로 탭바를 숨기는 로직이 필요 없다. `ZStack`
-            // 오버레이라 알약 모양 바깥 여백은 터치가 그대로 아래 콘텐츠로 전달된다 —
-            // `safeAreaInset`은 그 여백까지 통째로 터치를 막아버려서 쓰지 않는다. 대신
-            // 탭바 높이를 직접 측정해서 `Environment`로 내려보내, 각 탭 콘텐츠가 필요한
-            // 만큼만 스스로 여백을 챙기게 한다.
             ZStack(alignment: .bottom) {
                 TabView(selection: $selectedTab) {
                     mapTab.tag(Tab.map)
@@ -82,9 +58,6 @@ public struct RootView: View {
                 }
                 .toolbar(.hidden, for: .tabBar)
 
-                // 마이페이지 탭에서 하위 페이지가 떠 있는 동안만 숨긴다 — 다른 탭에서는
-                // 항상 보인다(`isMyPageSubpagePresented`가 탭 전환 시 확실히 안 꺼지는
-                // 경우에 대비한 이중 안전장치).
                 if !(selectedTab == .myPage && isMyPageSubpagePresented) {
                     floatingTabBar
                         .background(
@@ -136,8 +109,6 @@ public struct RootView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - 지도 탭 (메인)
-
     private var mapTab: some View {
         NavigationStack {
             ItineraryView(store: itineraryStore) {
@@ -173,8 +144,6 @@ public struct RootView: View {
         }
     }
 
-    // MARK: - 리스트 탭
-
     private var listTab: some View {
         NavigationStack {
             ItineraryListView(
@@ -188,8 +157,6 @@ public struct RootView: View {
             )
         }
     }
-
-    // MARK: - 요금표 탭
 
     private var budgetTab: some View {
         NavigationStack {

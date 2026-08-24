@@ -2,8 +2,6 @@ import ComposableArchitecture
 import Foundation
 import Supabase
 
-/// Apple/Google SDK 상호작용(ASAuthorizationController, GIDSignIn)은 Features/Auth가 담당하고,
-/// 여기서는 이미 확보한 idToken을 Supabase 세션으로 교환하는 것만 담당한다.
 @DependencyClient
 public struct AuthClient: Sendable {
     public var currentSession: @Sendable () async -> Session?

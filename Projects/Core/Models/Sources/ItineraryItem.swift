@@ -1,7 +1,5 @@
 import Foundation
 
-/// `itinerary_items` — travel_map.html의 `{n, lat, lng, t, mode, dur, noRoute}` stop 객체를
-/// 실제 편집 가능한 행으로 확장한 모델. 장소·비용·결제상태 필드를 모두 포함.
 public struct ItineraryItem: Codable, Identifiable, Equatable, Sendable {
     public var id: UUID
     public var tripId: UUID
@@ -18,9 +16,6 @@ public struct ItineraryItem: Codable, Identifiable, Equatable, Sendable {
     public var lat: Double?
     public var lng: Double?
     public var address: String?
-    /// 좌표를 reverse geocoding해서 계산한 ISO 국가코드 — 한 번 계산되면 DB에 저장해두고
-    /// 재사용한다(매번 다시 계산하지 않도록). `TripDay.countryCode`(여행 생성 시 한 번 찍히고
-    /// 다시 못 바꾸는 값)와 달리, 이 필드는 좌표가 있는 항목마다 개별로 계산된다.
     public var countryCode: String?
 
     public var source: ItemSource
@@ -119,6 +114,5 @@ public struct ItineraryItem: Codable, Identifiable, Equatable, Sendable {
         self.updatedAt = updatedAt
     }
 
-    /// 지도에 찍을 좌표가 있는지 (링크 없이 등록된 "식사, 미정" 같은 항목은 false).
     public var hasLocation: Bool { lat != nil && lng != nil }
 }

@@ -23,7 +23,6 @@ public struct BudgetFeature {
             public var id: CostCategory { category }
         }
 
-        /// 카테고리별 그룹/합계 — 저장하지 않고 items로부터 매번 파생 계산.
         public var groupedByCategory: [CategoryGroup] {
             let grouped = Dictionary(grouping: items.filter { $0.costCategory != nil }) { $0.costCategory! }
             return grouped
@@ -59,7 +58,6 @@ public struct BudgetFeature {
             items.reduce(Decimal(0)) { $0 + ($1.costAmountKRW ?? 0) }
         }
 
-        /// 금액은 입력했지만 원화 환산은 안 넣은 항목 — 합계에서 빠져있다는 걸 알려주기 위함.
         public var itemsMissingKRWConversion: [ItineraryItem] {
             items.filter { $0.costAmount != nil && $0.costAmountKRW == nil }
         }

@@ -1,12 +1,5 @@
 import SwiftUI
 
-/// 카드 콘텐츠를 왼쪽으로 스와이프하면, 카드와 똑같은 둥근 모서리 안에서 삭제 버튼이
-/// 드러나는 컨테이너.
-///
-/// 스톡 `List`의 `.swipeActions`/`.onDelete`를 쓰면 삭제 버튼이 리스트 행의 실제(꽉 찬)
-/// 너비를 기준으로 그려져서, `waypinCard()`처럼 여백을 두고 인셋된 콘텐츠보다 항상 더 넓게
-/// 삐져나온다 — `listRowInsets`는 콘텐츠 위치만 옮길 뿐 스와이프 버튼 자체의 프레임에는
-/// 영향을 못 준다. 그래서 삭제 버튼을 카드와 한 몸(같은 `clipShape`)으로 직접 그린다.
 public struct SwipeToDeleteCard<Content: View>: View {
     let onDelete: () -> Void
     let onTap: () -> Void

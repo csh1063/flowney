@@ -1,10 +1,6 @@
 import Models
 import SwiftUI
 
-/// 지금까지 코드 곳곳에 흩어진 diff로만 존재하던 색/폰트/여백/컴포넌트를 한 화면에 모아
-/// 실제로 눈으로 확인할 수 있게 만든 카탈로그. 앱 어딘가에 임시로 진입점을 달아 실기기에서
-/// 바로 볼 수 있게 한다 — Xcode 프리뷰만으로는 이 프로젝트의 실제 확인 방식(실기기 설치)과
-/// 안 맞아서 같이 못 봤을 것이기 때문.
 public struct DesignSystemCatalogView: View {
     public init() {}
 

@@ -7,21 +7,11 @@ import TripEdit
 
 public struct ItineraryView: View {
     @Bindable var store: StoreOf<ItineraryFeature>
-    // `@Presents`/`ifLet` 대신 이 View가 직접 TripEditFeature Store를 소유한다
-    // (TripListView와 동일한 이유·패턴) — "여행 수정" 메뉴에서 쓴다.
     @State private var editStore: StoreOf<TripEditFeature>?
-    // `@Presents`/`ifLet` 대신 이 View가 직접 AddItemFlowFeature Store를 소유한다
-    // (TripListView와 동일한 이유·패턴).
+    @State private var shareStore: StoreOf<TripShareFeature>?
     @State private var addItemFlowStore: StoreOf<AddItemFlowFeature>?
-    // 리스트는 기존 그대로 시스템 `.sheet`다 — 창(window) 레벨 모달이라 뜨는 순간 탭바 위로
-    // 자연스럽게 올라와서 가려준다(탭바를 따로 숨기는 코드가 필요 없음). 예전엔 화면 진입시
-    // 항상 열려 있었는데, 이제는 기본이 닫힘이고 "위로" 버튼을 눌러야만 뜬다.
     @State private var isListSheetPresented = false
-    // 리스트 시트는 두 단계(약 3.5줄 / 약 1.5줄)로만 오간다.
     @State private var sheetDetent: PresentationDetent = .height(expandedListHeight)
-    // 지도 탭이 상시 화면이 되면서, 여행이 아직 안 골라졌을 때 "여행 불러오기"를 어떻게
-    // 띄울지는 이 화면을 담고 있는 쪽(RootView)만 안다 — 그쪽 시트를 열어달라는 요청만
-    // 콜백으로 위로 전달한다.
     let onTripListRequested: () -> Void
 
     private let dayColumnWidth: CGFloat = 64
@@ -33,7 +23,6 @@ public struct ItineraryView: View {
         self.onTripListRequested = onTripListRequested
     }
 
-    // 시트가 닫혀있으면 0(지도가 화면 전체를 씀), 열려있으면 두 단계 중 하나.
     private var currentListHeight: CGFloat {
         guard isListSheetPresented else { return 0 }
         return sheetDetent == .height(Self.collapsedListHeight) ? Self.collapsedListHeight : Self.expandedListHeight
@@ -84,13 +73,23 @@ public struct ItineraryView: View {
                     Button {
                         store.send(.searchAllRoutesButtonTapped)
                     } label: {
-                        if store.isSearchingAllRoutes {
-                            ProgressView()
-                        } else {
-                            Label("전체 경로 탐색", systemImage: "point.topleft.down.curvedto.point.bottomright.up")
-                        }
+                        Label(
+                            store.isSearchingAllRoutes ? "탐색 중…" : "전체 경로 탐색",
+                            systemImage: store.isSearchingAllRoutes ? "hourglass" : "point.topleft.down.curvedto.point.bottomright.up"
+                        )
                     }
                     .disabled(store.isSearchingAllRoutes)
+                }
+                ToolbarItem(placement: .secondaryAction) {
+                    Button {
+                        store.send(.todayRouteRefreshButtonTapped)
+                    } label: {
+                        Label(
+                            store.isRefreshingTodayRoute ? "갱신 중…" : "오늘 경로 갱신",
+                            systemImage: store.isRefreshingTodayRoute ? "hourglass" : "arrow.clockwise"
+                        )
+                    }
+                    .disabled(store.isRefreshingTodayRoute)
                 }
                 ToolbarItem(placement: .secondaryAction) {
                     Divider()
@@ -111,6 +110,17 @@ public struct ItineraryView: View {
                         }
                     } label: {
                         Label("여행 수정", systemImage: "pencil")
+                    }
+                }
+                ToolbarItem(placement: .secondaryAction) {
+                    Button {
+                        if let trip = store.trip {
+                            shareStore = Store(initialState: TripShareFeature.State(tripId: trip.id)) {
+                                TripShareFeature()
+                            }
+                        }
+                    } label: {
+                        Label("여행 공유", systemImage: "square.and.arrow.up")
                     }
                 }
             }
@@ -174,6 +184,18 @@ public struct ItineraryView: View {
                     }
             }
         }
+        .sheet(
+            isPresented: Binding(
+                get: { shareStore != nil },
+                set: { isPresented in
+                    if !isPresented { shareStore = nil }
+                }
+            )
+        ) {
+            if let shareStore {
+                TripShareView(store: shareStore)
+            }
+        }
     }
 
     private var mapLayer: some View {
@@ -218,8 +240,6 @@ public struct ItineraryView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
-    // MARK: - 국가 띠 + 날짜탭 + 날씨 바
-
     private var headerSection: some View {
         VStack(spacing: 4) {
             ScrollView(.horizontal, showsIndicators: false) {
@@ -248,15 +268,9 @@ public struct ItineraryView: View {
                     }
                 }
             }
-            // 예전엔 `.padding(.horizontal)`을 ScrollView 자체에 걸어서, 뷰포트 너비 자체가
-            // 화면보다 좁아졌었다 — 그러면 스크롤해서 셀이 지나갈 때도 항상 화면 양끝에
-            // 여백이 낀 채로만 보인다. 뷰포트는 화면 끝까지 꽉 채우고, 맨 처음/맨 끝
-            // 콘텐츠에만 여백이 남도록 컨텐츠 마진으로 바꾼다.
             .contentMargins(.horizontal, 16, for: .scrollContent)
             .padding(.top, 8)
 
-            // 응답 오기 전에는 빈 칸(공백 한 칸)을 같은 폰트로 깔아둬서, 나중에 텍스트가
-            // 채워질 때 그 위/아래 레이아웃이 밀리지 않도록 처음부터 자리를 잡아둔다.
             Text(store.selectedDayWeather.map(weatherSummary) ?? " ")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -272,8 +286,6 @@ public struct ItineraryView: View {
         }
         return text
     }
-
-    // MARK: - 이전/위로(아래로)/다음 버튼
 
     private var controlBar: some View {
         HStack(spacing: 12) {
@@ -313,8 +325,6 @@ public struct ItineraryView: View {
             .disabled(store.isNextDisabled)
         }
     }
-
-    // MARK: - 하단 리스트
 
     private var itemListContent: some View {
         Group {
@@ -363,8 +373,6 @@ public struct ItineraryView: View {
                                     Image(systemName: "location.fill")
                                         .foregroundStyle(.blue)
                                 }
-                                // 여행 생성 때 고른 나라 목록에 없는 곳이면 경고 아이콘 —
-                                // 독립된 Button이라 행 전체 탭(장소 선택)과 별도로 눌린다.
                                 if store.unregisteredCountryItemIDs.contains(item.id) {
                                     Button {
                                         store.send(.warningIconTapped(item.id))
@@ -375,9 +383,6 @@ public struct ItineraryView: View {
                                     .buttonStyle(.borderless)
                                 }
                             }
-                            // Spacer로 벌어진 빈 공간까지 포함해서 행 전체가 눌리도록.
-                            // 이게 없으면 draggable 제스처와 겹치면서 텍스트가 있는 부분만
-                            // 탭이 먹는 것처럼 보였다.
                             .contentShape(Rectangle())
                             .onTapGesture {
                                 store.send(.selectStopTapped(item.id))
@@ -408,9 +413,6 @@ public struct ItineraryView: View {
                     }
                     .listStyle(.plain)
                     .onChange(of: store.selectedItemID) { _, newValue in
-                        // html의 markListState()도 scrollIntoView({block:'start'})로 항상
-                        // 리스트 맨 위로 스크롤한다 — 이미 그 이상 올릴 내용이 없으면(맨 끝
-                        // 근처) 알아서 거기서 멈추고 억지로 빈 여백을 만들지 않는다.
                         withAnimation {
                             if let newValue {
                                 proxy.scrollTo(newValue, anchor: .top)

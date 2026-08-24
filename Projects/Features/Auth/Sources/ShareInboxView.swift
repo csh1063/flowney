@@ -5,11 +5,8 @@ import DesignSystem
 import Models
 import SwiftUI
 
-/// 마이페이지 "공유 링크" 메뉴에서 들어오는 공유 링크함 화면.
 public struct ShareInboxView: View {
     @Bindable var store: StoreOf<ShareInboxFeature>
-    // 다른 화면들과 동일한 패턴 — `@Presents`/`ifLet` 대신 View가 AddItemFlowFeature Store를
-    // 직접 소유한다 (project_tca_presents_crash 참고).
     @State private var addItemFlowStore: StoreOf<AddItemFlowFeature>?
 
     public init(store: StoreOf<ShareInboxFeature>) {
@@ -47,9 +44,6 @@ public struct ShareInboxView: View {
         }
         .background(WaypinTheme.background)
         .waypinLeadingTitle("공유 링크함")
-        // `.onAppear`가 이 화면(navigationDestination(isPresented:)으로 뜨는 화면)에서
-        // 안정적으로 안 불리는 경우가 있었다 — 같은 파일의 행별 미리보기 로딩(`rowAppeared`)엔
-        // 이미 `.task`를 쓰고 있어 그걸로 통일한다.
         .task { store.send(.onAppear) }
         .onChange(of: store.addItemFlowRequest) { _, request in
             guard let request else { return }
@@ -104,7 +98,6 @@ private struct ShareRowView: View {
                         .foregroundStyle(WaypinTheme.textPrimary)
                         .lineLimit(1)
                 }
-                // 나라/도시는 주소 파싱이 애매하면 nil로 오므로, 있을 때만 보여준다.
                 if let locationText {
                     Text(locationText)
                         .font(WaypinFont.caption)
@@ -168,7 +161,6 @@ private struct ShareRowView: View {
         }
     }
 
-    // 방금 전 / N분 전(1~59) / N시간 전(1~23) / 하루 전(24~47시간) / 그 이후는 날짜로.
     private var savedAtText: String {
         let interval = Date().timeIntervalSince(share.savedAt)
         switch interval {
