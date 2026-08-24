@@ -15,8 +15,6 @@ public struct TripEditFeature {
         public var selectedCountryCodes: [String]
         public var isSaving = false
         public var errorMessage: String?
-        // `@Presents`/`ifLet` 프레젠테이션 대신 부모 View가 이 필드를 직접 관찰해서
-        // 저장 완료를 감지한다 (자세한 이유는 TripListView.swift 참고).
         public var savedTrip: Trip?
 
         public var isEditing: Bool { tripID != nil }
@@ -85,9 +83,6 @@ public struct TripEditFeature {
                 let isCreating = state.tripID == nil
                 let tripID = state.tripID ?? uuid()
                 let name = state.name
-                // DatePicker가 준 Date는 기기 타임존 자정이라, DB 인코딩(UTC 기준
-                // "yyyy-MM-dd")과 그대로 맞물리게 UTC 자정으로 정규화해둔다 — 안 그러면
-                // 한국(UTC+9)처럼 UTC보다 빠른 타임존에서는 저장할 때마다 하루 앞당겨진다.
                 let startDate = DateOnly.normalizeToUTCMidnight(state.startDate)
                 let endDate = DateOnly.normalizeToUTCMidnight(state.endDate)
                 let countryCodes = state.selectedCountryCodes

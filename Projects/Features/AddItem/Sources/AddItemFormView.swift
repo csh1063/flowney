@@ -2,8 +2,6 @@ import ComposableArchitecture
 import Models
 import SwiftUI
 
-/// `AddItemFeature`의 입력 폼 콘텐츠만 담당 — 내비게이션/타이틀/툴바는 이 화면을 감싸는
-/// `AddItemFlowView`가 마법사 헤더와 함께 한 번에 제공한다(중첩 내비바 방지).
 struct AddItemFormView: View {
     @Bindable var store: StoreOf<AddItemFeature>
 
@@ -114,10 +112,6 @@ struct AddItemFormView: View {
                     }
                 }
 
-                // 세부 수단(지하철/트램/버스 등)은 "경로 탐색"이 실제 걷기 vs 대중교통
-                // 소요시간을 비교해서 자동으로 정해준다 — 여기서는 "차만큼은 확실히
-                // 차로 가야 한다"는 의도만 구분하면 되므로 3단계로 단순화했다. 걷기/대중교통을
-                // 골라도 검색이 더 빠른 쪽으로 바꿀 수 있다("차"만 검색이 안 건드리는 확정값).
                 Picker("이동수단", selection: transportBucketBinding) {
                     ForEach(TransportBucket.allCases, id: \.self) { bucket in
                         Text(bucket.label).tag(bucket)
@@ -192,9 +186,6 @@ struct AddItemFormView: View {
         }
     }
 
-    // 걷기/대중교통은 백엔드에서 똑같이 "실제로 비교해서 더 빠른 쪽" 취급되므로 굳이
-    // 세부 TransportMode로 구분해서 저장할 필요가 없다 — .walk만 미리 채워서 검색 전에도
-    // 배지가 보이게 하고, 대중교통은 검색이 실제 수단(지하철/버스/트램)을 채워줄 때까지 비워둔다.
     private var transportBucketBinding: Binding<TransportBucket> {
         Binding(
             get: {

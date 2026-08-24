@@ -1,6 +1,5 @@
 import SwiftUI
 
-/// 브랜드 accent 색을 쓰는 공용 주요 액션 버튼 스타일(로그인/저장/추가 등).
 public struct PrimaryButtonStyle: ButtonStyle {
     public init() {}
 

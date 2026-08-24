@@ -101,8 +101,6 @@ public struct ItineraryListView: View {
         return formatter
     }()
 
-    // MARK: - 행 모델
-
     private enum ListRow: Identifiable {
         case countryHeader(code: String)
         case dayHeader(day: TripDay)

@@ -47,8 +47,6 @@ let project = Project(
                     "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
                     "DEVELOPMENT_TEAM": .string(Constants.developmentTeam),
                     "CODE_SIGN_STYLE": "Automatic",
-                    // DEBUG_DIAGNOSTIC: navigationDestination(for:) 렌더링 실패가
-                    // ENABLE_DEBUG_DYLIB=NO 때문인지 테스트하기 위해 잠시 제거.
                 ],
                 configurations: [
                     .debug(name: .debug, xcconfig: "Config.xcconfig"),

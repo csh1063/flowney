@@ -3,9 +3,6 @@ import DesignSystem
 import Models
 import SwiftUI
 
-/// 일정 추가 마법사 2단계 — 여행 기간을 실제 요일에 맞춰 배치한 달력 그리드. 여행 범위
-/// 밖의 칸은 숫자 없이 빈 칸으로만 채운다(선택 불가). 7일이 넘으면 자연스럽게 여러 줄로
-/// 이어지고, 월이 바뀌는 줄 위에는 그 줄에 걸친 월 이름을 표시한다.
 struct DaySelectionCalendarView: View {
     @Bindable var store: StoreOf<AddItemFlowFeature>
 
@@ -83,11 +80,9 @@ struct DaySelectionCalendarView: View {
         }
     }
 
-    // 여행 시작일의 실제 요일부터 시작하도록, 그 요일 앞자리만큼 빈 칸을 채운다. 뒷쪽은
-    // `weeks`가 7개 단위로 나누면서 자연히 짧은 마지막 줄로 끝나 별도 처리가 필요 없다.
     private var cells: [Cell] {
         guard let first = store.days.first else { return [] }
-        let firstWeekday = Self.calendar.component(.weekday, from: first.dayDate)  // 일=1...토=7
+        let firstWeekday = Self.calendar.component(.weekday, from: first.dayDate)
         let leadingBlanks = firstWeekday - 1
         return (0..<leadingBlanks).map { .blank($0) } + store.days.map { .day($0) }
     }
@@ -96,8 +91,6 @@ struct DaySelectionCalendarView: View {
         let all = cells
         guard !all.isEmpty else { return [] }
         var rows = stride(from: 0, to: all.count, by: 7).map { Array(all[$0..<min($0 + 7, all.count)]) }
-        // 마지막 줄이 7칸을 못 채우면 나머지 칸도 빈 칸으로 채워야, 각 열의 너비가
-        // 다른 줄과 똑같이 맞는다(안 채우면 적은 개수로 HStack이 넓게 나눠 칸이 커 보임).
         if let lastIndex = rows.indices.last, rows[lastIndex].count < 7 {
             let missing = 7 - rows[lastIndex].count
             rows[lastIndex] += (0..<missing).map { .blank(1000 + $0) }
@@ -109,7 +102,6 @@ struct DaySelectionCalendarView: View {
         week.contains { monthLabel(for: $0) != nil }
     }
 
-    // 여행의 첫날이거나, 바로 앞날과 월이 다르면 그 날짜의 월을 표시한다.
     private func monthLabel(for cell: Cell) -> String? {
         guard case let .day(day) = cell, let index = store.days.firstIndex(where: { $0.id == day.id }) else { return nil }
         let isMonthStart: Bool =

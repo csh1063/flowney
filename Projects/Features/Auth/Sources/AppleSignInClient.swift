@@ -1,9 +1,6 @@
 import CryptoKit
 import Foundation
 
-/// SwiftUI의 `SignInWithAppleButton`이 이미 프레젠테이션/딜리게이트 처리를 해주므로,
-/// 여기서는 Apple의 재전송 공격 방지 요구사항(request에 해시 nonce, 검증에 raw nonce)에
-/// 필요한 nonce 생성/해싱만 담당한다.
 public enum AppleNonce {
     public struct Credential: Sendable {
         public var identityToken: String

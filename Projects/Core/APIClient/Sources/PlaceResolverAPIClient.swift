@@ -24,8 +24,6 @@ public enum PlaceResolverError: Error, Equatable {
     case unresolvableLink
 }
 
-/// mock-serverless의 `POST /api/travel/place/resolve`를 호출해서 구글맵 공유링크를
-/// 장소(이름/좌표/주소)로 해석한다. GOOGLE_API_KEY는 서버 전용이라 클라이언트는 모름.
 @DependencyClient
 public struct PlaceResolverAPIClient: Sendable {
     public var resolve: @Sendable (_ url: String) async throws -> ResolvedPlace

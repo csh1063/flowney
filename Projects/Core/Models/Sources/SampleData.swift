@@ -1,13 +1,6 @@
 import Foundation
 
-/// `travel_map.html`(참고 프로토타입)에 있던 실제 2026년 유럽 여행
-/// (네덜란드 → 프랑스 → 스위스) 일정을 그대로 옮긴 더미 데이터.
-/// Xcode 프리뷰와 개발 중 빈 상태 대신 보여줄 샘플로 쓴다.
 public enum SampleTravelData {
-    // DB에 저장할 때 쓰는 `DateOnly.formatter`(Trip.swift)가 UTC 기준으로 "yyyy-MM-dd"
-    // 문자열을 만든다 — 여기서 날짜를 Amsterdam 등 다른 시간대로 만들면 자정이 UTC로는
-    // 전날 저녁이 돼서 하루 밀려 저장된다("9/19 여행"이 "9/18"로 저장되던 버그). 순수
-    // 날짜(시간 의미 없음) 데이터라 인코딩과 동일한 UTC로 맞춰서 만든다.
     private static let calendar: Calendar = {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "UTC")!
@@ -1930,9 +1923,6 @@ public enum SampleTravelData {
 
     public static let items: [ItineraryItem] = day1Items + day2Items + day3Items + day4Items + day5Items + day6Items + day7Items + day8Items + day9Items + day10Items + day11Items + day12Items + day13Items + day14Items + day15Items + day16Items + day17Items + day18Items + day19Items
 
-    /// `trip`/`countries`/`days`/`items`는 프리뷰용으로 ID가 고정돼 있어서, 실제 백엔드에
-    /// 그대로 insert하면 두 번째부터는 매번 기본키 중복 에러가 난다. 실제로 서버에 심을
-    /// 때는 이 함수로 매번 새 UUID를 발급받은 복사본을 만들어 쓴다.
     public static func makeSeed(ownerId: UUID) -> (trip: Trip, countries: [TripCountry], days: [TripDay], items: [ItineraryItem]) {
         let tripID = UUID()
 

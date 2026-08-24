@@ -39,11 +39,8 @@ public struct AddItemFeature {
         public var notes: String = ""
         public var isSaving = false
         public var errorMessage: String?
-        // `@Presents`/`ifLet` 프레젠테이션 대신 부모 View가 이 필드를 직접 관찰해서
-        // 저장 완료를 감지한다 (TripEditFeature.savedTrip과 동일한 패턴).
         public var savedItem: ItineraryItem?
 
-        // 링크 모드 전용
         public var linkURLText: String = ""
         public var isResolvingLink: Bool = false
         public var resolvedLat: Double?
@@ -115,8 +112,6 @@ public struct AddItemFeature {
         case saveButtonTapped
         case cancelButtonTapped
         case saveResponse(Result<ItineraryItem, any Error>)
-        // 마법사 헤더에서 여행/날짜를 다시 골랐을 때 — 이미 입력해둔 값(이름/메모/비용 등)은
-        // 그대로 두고 붙일 대상만 갈아끼운다.
         case contextChanged(tripID: Trip.ID, dayID: TripDay.ID, startingSortOrder: Int)
         case delegate(Delegate)
 
@@ -232,6 +227,9 @@ public struct AddItemFeature {
                     original.arrivalMode = state.arrivalMode
                     original.name = state.name
                     original.address = address
+                    if original.lat != state.resolvedLat || original.lng != state.resolvedLng {
+                        original.countryCode = nil
+                    }
                     original.lat = state.resolvedLat
                     original.lng = state.resolvedLng
                     original.placeId = state.resolvedPlaceId

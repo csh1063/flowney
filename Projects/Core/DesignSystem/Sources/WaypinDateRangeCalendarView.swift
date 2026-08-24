@@ -1,8 +1,5 @@
 import SwiftUI
 
-/// 여행 시작일-종료일을 두 번 탭으로 고르는 인라인 월 달력. `DaySelectionCalendarView`
-/// (AddItem 모듈, 단일 선택·TCA Store 결합)와 달리 이건 순수 `Binding<Date>` 두 개만
-/// 받아서 어느 모듈에서든 재사용 가능하다.
 public struct WaypinDateRangeCalendarView: View {
     @Binding private var startDate: Date
     @Binding private var endDate: Date
@@ -107,11 +104,9 @@ public struct WaypinDateRangeCalendarView: View {
         return range.compactMap { Self.calendar.date(byAdding: .day, value: $0 - 1, to: first) }
     }
 
-    // 그 달 1일의 실제 요일만큼 앞을 빈 칸으로 채워서 요일 열이 맞도록 하고, 마지막 줄도
-    // 7칸을 못 채우면 빈 칸으로 채워 모든 줄의 칸 너비가 동일하게 유지되게 한다.
     private var cells: [Cell] {
         guard !daysInDisplayedMonth.isEmpty else { return [] }
-        let firstWeekday = Self.calendar.component(.weekday, from: firstOfDisplayedMonth)  // 일=1...토=7
+        let firstWeekday = Self.calendar.component(.weekday, from: firstOfDisplayedMonth)
         let leadingBlanks = firstWeekday - 1
         return (0..<leadingBlanks).map { .blank($0) } + daysInDisplayedMonth.map { .day($0) }
     }

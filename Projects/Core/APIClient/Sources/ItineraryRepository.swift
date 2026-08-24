@@ -5,14 +5,12 @@ import Supabase
 
 @DependencyClient
 public struct ItineraryRepository: Sendable {
-    /// 여행 전체 일정(요금표 화면 등에서 사용) — 하루 단위가 아닌 trip 단위 조회.
     public var fetchAllItems: @Sendable (_ tripId: Trip.ID) async throws -> [ItineraryItem]
     public var fetchDayItems: @Sendable (_ dayId: TripDay.ID) async throws -> [ItineraryItem]
     public var createItem: @Sendable (_ item: ItineraryItem) async throws -> ItineraryItem
     public var updateItem: @Sendable (_ item: ItineraryItem) async throws -> ItineraryItem
     public var deleteItem: @Sendable (_ id: ItineraryItem.ID) async throws -> Void
 
-    /// 드래그앤드롭 결과를 한 번의 RPC 호출로 반영.
     public var reorderItems: @Sendable (_ updates: [ItemReorderUpdate]) async throws -> Void
 }
 

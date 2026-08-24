@@ -5,26 +5,13 @@ import Models
 import SwiftUI
 import Supabase
 
-/// 마이페이지 — 계정정보(탭하면 상세로) / 일정(공유 링크함) / 약관 및 정책 세 섹션.
-/// 항목이 늘어나기 쉽게 `MyPageMenuItem` 배열 형태로 짜뒀다.
 public struct MyPageView: View {
     @Bindable var store: StoreOf<AuthFeature>
-    // 공유 링크함의 트립 피커 기본 선택값 — 지도 탭에 지금 불러와져있는 여행.
     let currentTripID: Trip.ID?
-    // 이 화면에서 하위 페이지(계정정보/공유링크함)로 이동했는지를 RootView에 알려서,
-    // 떠 있는 커스텀 탭바를 그동안 숨길 수 있게 한다.
     @Binding var isSubpagePresented: Bool
-    // 공유 익스텐션으로 링크를 저장한 뒤 앱을 다시 켠 첫 실행이면 RootView가 이 값을 한 번
-    // true로 세팅한다 — 소비하는 즉시 다시 false로 되돌린다(1회성 트리거).
     @Binding var autoOpenShareInbox: Bool
 
     @State private var isAccountInfoPresented = false
-    // `@Presents`/`ifLet` 대신 View가 Store를 직접 소유하는 이 프로젝트의 공통 패턴
-    // (project_tca_presents_crash 참고) — nil이 아니면 화면이 뜬다. `.navigationDestination`
-    // 클로저 안에서 `Store(initialState:...)`를 매번 인라인으로 새로 만들면, body가
-    // 재평가될 때마다(예: 아래 `isSubpagePresented` 바인딩이 바뀌어 부모가 다시 그려질 때)
-    // Store가 통째로 새로 만들어지면서 방금 로드된 상태가 날아간다 — 실제로 이 버그로 공유
-    // 링크함이 항상 빈 목록으로 보였다. `@State`로 한 번만 만들어서 재사용해야 한다.
     @State private var shareInboxStore: StoreOf<ShareInboxFeature>?
 
     public init(
@@ -160,7 +147,6 @@ public struct MyPageView: View {
         }
     }
 
-    // 한 번도 어느 여행에도 추가된 적 없는 공유 링크 개수 — 뱃지 숫자.
     private var unusedShareCount: Int {
         PendingShareStore.list().filter { !$0.hasBeenAdded }.count
     }

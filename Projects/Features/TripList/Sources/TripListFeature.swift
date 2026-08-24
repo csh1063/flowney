@@ -88,17 +88,12 @@ public struct TripListFeature {
                         guard let userID = await authClient.currentSession()?.user.id else {
                             throw TripListError.notSignedIn
                         }
-                        // 매번 새 UUID로 시딩해서, 이전 시도의 잔여 row가 있어도 기본키
-                        // 충돌 없이 항상 새로 만들어진다.
                         let seed = SampleTravelData.makeSeed(ownerId: userID)
 
                         let savedTrip = try await tripsRepository.createTrip(seed.trip)
                         try await tripsRepository.upsertCountries(seed.countries)
                         _ = try await tripsRepository.createDays(seed.days)
 
-                        // 136개 항목을 한꺼번에 동시 요청하면 서버 쪽 동시 연결 제한에 걸리기
-                        // 쉬워서, 적당한 크기로 나눠서 순차 처리한다. 개별 항목 하나가 실패해도
-                        // 전체를 막지 않고 넘어간다.
                         let batchSize = 8
                         for batchStart in stride(from: 0, to: seed.items.count, by: batchSize) {
                             let batch = seed.items[batchStart..<min(batchStart + batchSize, seed.items.count)]

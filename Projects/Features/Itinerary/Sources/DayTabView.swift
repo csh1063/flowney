@@ -25,9 +25,6 @@ struct DayTabView: View {
             .background(isSelected ? WaypinTheme.accent : WaypinTheme.divider)
             .foregroundStyle(isSelected ? WaypinTheme.accentLabel : .primary)
             .clipShape(RoundedRectangle(cornerRadius: 10))
-            // 날짜 칸(columnWidth) 자체는 CountryDayHeaderView의 누적 폭 계산과 맞아야 해서
-            // 그대로 두고, 그 안의 알약만 살짝 인셋을 줘서 버튼 사이에 여백처럼 보이게 한다
-            // (HStack에 spacing을 주면 그 누적 폭이 날짜마다 밀려서 위 국가 띠와 어긋난다).
             .padding(.horizontal, 3)
         }
         .buttonStyle(.plain)

@@ -3,8 +3,6 @@ import DesignSystem
 import SwiftUI
 import Supabase
 
-/// 마이페이지 "계정정보" 카드를 눌러서 들어오는 상세 화면. 지금은 이메일뿐이지만, 나중에
-/// 계정 관련 항목이 늘어날 자리라 별도 화면으로 뺐다.
 public struct AccountInfoView: View {
     @Bindable var store: StoreOf<AuthFeature>
 
