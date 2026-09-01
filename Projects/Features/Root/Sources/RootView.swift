@@ -15,6 +15,8 @@ public struct RootView: View {
 
     @Bindable var store: StoreOf<AppFeature>
 
+    @AppStorage(AppearanceMode.storageKey) private var appearanceModeRaw: String = AppearanceMode.system.rawValue
+
     @State private var currentTrip: Trip?
     @State private var itineraryStore = Store(initialState: ItineraryFeature.State()) {
         ItineraryFeature()
@@ -33,6 +35,8 @@ public struct RootView: View {
     public var body: some View {
         content
             .tint(WaypinTheme.accent)
+            .font(WaypinFont.body)
+            .preferredColorScheme((AppearanceMode(rawValue: appearanceModeRaw) ?? .system).colorScheme)
             .onAppear { store.send(.auth(.onAppear)) }
     }
 
@@ -79,7 +83,7 @@ public struct RootView: View {
         HStack(spacing: 0) {
             floatingTabButton(.map, icon: "map", label: "지도")
             floatingTabButton(.list, icon: "list.bullet", label: "리스트")
-            floatingTabButton(.budget, icon: "wonsign.circle", label: "요금표")
+            floatingTabButton(.budget, icon: "wonsign.circle", label: "예산")
             floatingTabButton(.myPage, icon: "person.crop.circle", label: "마이페이지")
         }
         .padding(.vertical, 10)
@@ -104,6 +108,14 @@ public struct RootView: View {
                     .font(WaypinFont.caption)
             }
             .foregroundStyle(isSelected ? WaypinTheme.accent : WaypinTheme.textSecondary)
+            .padding(.vertical, 6)
+            .padding(.horizontal, 10)
+            .background {
+                if isSelected {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(WaypinTheme.fill)
+                }
+            }
             .frame(maxWidth: .infinity)
         }
         .buttonStyle(.plain)
@@ -164,16 +176,10 @@ public struct RootView: View {
                 if let budgetStore {
                     BudgetView(store: budgetStore)
                 } else {
-                    VStack {
-                        Spacer()
-                        Text("불러온 여행이 없어요")
-                            .font(WaypinFont.body)
-                            .foregroundStyle(WaypinTheme.textSecondary)
-                        Spacer()
+                    WaypinTripLoadEmptyStateView(icon: "wonsign.circle") {
+                        isTripLoaderPresented = true
                     }
-                    .frame(maxWidth: .infinity)
-                    .background(WaypinTheme.background)
-                    .waypinLeadingTitle("요금표")
+                    .waypinLeadingTitle("예산")
                 }
             }
         }

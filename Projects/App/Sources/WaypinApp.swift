@@ -1,4 +1,5 @@
 import ComposableArchitecture
+import DesignSystem
 import Root
 import SwiftUI
 
@@ -8,6 +9,10 @@ struct WaypinApp: App {
 
     static let store = Store(initialState: AppFeature.State()) {
         AppFeature()
+    }
+
+    init() {
+        WaypinFont.applyUIKitAppearance()
     }
 
     var body: some Scene {

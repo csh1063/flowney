@@ -26,6 +26,7 @@ public struct ItineraryFeature {
         public var isAnimating: Bool = false
         public var isSearchingAllRoutes: Bool = false
         public var isRefreshingTodayRoute: Bool = false
+        public var isRefreshingWeather: Bool = false
 
         public var warningPopupItemID: ItineraryItem.ID?
 
@@ -145,6 +146,9 @@ public struct ItineraryFeature {
 
         case todayRouteRefreshButtonTapped
         case todayRouteRefreshFinished
+
+        case refreshAllWeatherButtonTapped
+        case weatherRefreshFinished
     }
 
     @Dependency(\.tripsRepository) var tripsRepository
@@ -190,67 +194,7 @@ public struct ItineraryFeature {
                         await send(.countriesResponse(.failure(error)))
                     }
 
-                    guard !days.isEmpty, !items.isEmpty else { return }
-
-                    struct DayLocation {
-                        let day: TripDay
-                        let lat: Double
-                        let lng: Double
-                    }
-                    let dayLocations: [DayLocation] = days.compactMap { day in
-                        guard
-                            let firstItem = items
-                                .filter({ $0.dayId == day.id })
-                                .sorted(by: { $0.sortOrder < $1.sortOrder })
-                                .first(where: { $0.lat != nil && $0.lng != nil }),
-                            let lat = firstItem.lat, let lng = firstItem.lng
-                        else { return nil }
-                        return DayLocation(day: day, lat: lat, lng: lng)
-                    }
-
-                    var blocks: [[DayLocation]] = []
-                    for location in dayLocations {
-                        if let lastBlockLocation = blocks.last?.last,
-                           abs(lastBlockLocation.lat - location.lat) < 0.01,
-                           abs(lastBlockLocation.lng - location.lng) < 0.01 {
-                            blocks[blocks.count - 1].append(location)
-                        } else {
-                            blocks.append([location])
-                        }
-                    }
-
-                    let keyFormatter = DateFormatter()
-                    keyFormatter.calendar = Calendar(identifier: .gregorian)
-                    keyFormatter.locale = Locale(identifier: "en_US_POSIX")
-                    keyFormatter.timeZone = TimeZone(identifier: "UTC")
-                    keyFormatter.dateFormat = "yyyy-MM-dd"
-
-                    await withTaskGroup(of: Void.self) { group in
-                        for block in blocks {
-                            guard let representative = block.first else { continue }
-                            group.addTask {
-                                do {
-                                    let weatherByDate = try await weatherAPIClient.fetchWeatherRange(
-                                        representative.lat,
-                                        representative.lng,
-                                        block.map(\.day.dayDate)
-                                    )
-                                    for location in block {
-                                        let key = keyFormatter.string(from: location.day.dayDate)
-                                        if let weather = weatherByDate[key] {
-                                            await send(.weatherResponse(location.day.id, .success(weather)))
-                                        } else {
-                                            await send(.weatherResponse(location.day.id, .failure(WeatherAPIError.noData)))
-                                        }
-                                    }
-                                } catch {
-                                    for location in block {
-                                        await send(.weatherResponse(location.day.id, .failure(error)))
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    await fetchWeather(days: days, items: items, send: send)
                 }
 
             case let .daysResponse(.success(days)):
@@ -589,6 +533,20 @@ public struct ItineraryFeature {
                 state.isRefreshingTodayRoute = false
                 return .none
 
+            case .refreshAllWeatherButtonTapped:
+                guard !state.isRefreshingWeather, state.trip != nil else { return .none }
+                state.isRefreshingWeather = true
+                let days = Array(state.days)
+                let items = Array(state.itemsByDay.values.flatMap { $0 })
+                return .run { send in
+                    await fetchWeather(days: days, items: items, send: send)
+                    await send(.weatherRefreshFinished)
+                }
+
+            case .weatherRefreshFinished:
+                state.isRefreshingWeather = false
+                return .none
+
             case let .dayRoutesResponse(dayID, .success(legs)):
                 let requestItemsForCache = (state.itemsByDay[dayID] ?? []).map {
                     RouteLegRequestItem(id: $0.id, lat: $0.lat, lng: $0.lng, mode: $0.arrivalMode, noRoute: $0.noRoute)
@@ -658,6 +616,70 @@ public struct ItineraryFeature {
                     group.addTask {
                         guard let code = await self.countryLookupClient.countryCode(lat, lng) else { return }
                         await send(.countryCodesResolved([item.id: code]))
+                    }
+                }
+            }
+        }
+    }
+
+    private func fetchWeather(days: [TripDay], items: [ItineraryItem], send: Send<Action>) async {
+        guard !days.isEmpty, !items.isEmpty else { return }
+
+        struct DayLocation {
+            let day: TripDay
+            let lat: Double
+            let lng: Double
+        }
+        let dayLocations: [DayLocation] = days.compactMap { day in
+            guard
+                let firstItem = items
+                    .filter({ $0.dayId == day.id })
+                    .sorted(by: { $0.sortOrder < $1.sortOrder })
+                    .first(where: { $0.lat != nil && $0.lng != nil }),
+                let lat = firstItem.lat, let lng = firstItem.lng
+            else { return nil }
+            return DayLocation(day: day, lat: lat, lng: lng)
+        }
+
+        var blocks: [[DayLocation]] = []
+        for location in dayLocations {
+            if let lastBlockLocation = blocks.last?.last,
+               abs(lastBlockLocation.lat - location.lat) < 0.01,
+               abs(lastBlockLocation.lng - location.lng) < 0.01 {
+                blocks[blocks.count - 1].append(location)
+            } else {
+                blocks.append([location])
+            }
+        }
+
+        let keyFormatter = DateFormatter()
+        keyFormatter.calendar = Calendar(identifier: .gregorian)
+        keyFormatter.locale = Locale(identifier: "en_US_POSIX")
+        keyFormatter.timeZone = TimeZone(identifier: "UTC")
+        keyFormatter.dateFormat = "yyyy-MM-dd"
+
+        await withTaskGroup(of: Void.self) { group in
+            for block in blocks {
+                guard let representative = block.first else { continue }
+                group.addTask {
+                    do {
+                        let weatherByDate = try await self.weatherAPIClient.fetchWeatherRange(
+                            representative.lat,
+                            representative.lng,
+                            block.map(\.day.dayDate)
+                        )
+                        for location in block {
+                            let key = keyFormatter.string(from: location.day.dayDate)
+                            if let weather = weatherByDate[key] {
+                                await send(.weatherResponse(location.day.id, .success(weather)))
+                            } else {
+                                await send(.weatherResponse(location.day.id, .failure(WeatherAPIError.noData)))
+                            }
+                        }
+                    } catch {
+                        for location in block {
+                            await send(.weatherResponse(location.day.id, .failure(error)))
+                        }
                     }
                 }
             }

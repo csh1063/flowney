@@ -174,7 +174,7 @@ struct RouteMapView: UIViewRepresentable {
 
         private static func pinColor(for itemType: ItemType) -> UIColor {
             switch itemType {
-            case .start: return WaypinTheme.brandNavyUIColor
+            case .airport: return UIColor(hex: "#4A6FA5")
             case .sight: return UIColor(hex: "#2F8F5B")
             case .meal: return UIColor(hex: "#F5A623")
             case .lodge: return WaypinTheme.brandGoldUIColor

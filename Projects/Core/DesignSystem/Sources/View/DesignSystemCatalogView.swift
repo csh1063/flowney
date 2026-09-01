@@ -21,7 +21,9 @@ public struct DesignSystemCatalogView: View {
 
     private var colorSection: some View {
         Section("색상") {
-            swatchRow("accent (라이트=네이비/다크=골드)", color: WaypinTheme.accent)
+            swatchRow("accent (Gold)", color: WaypinTheme.accent)
+            swatchRow("fill (Brand Primary)", color: WaypinTheme.fill)
+            swatchRow("primaryContainer", color: WaypinTheme.primaryContainer)
             swatchRow("brandNavy (고정)", color: WaypinTheme.brandNavy)
             swatchRow("brandGold (고정)", color: WaypinTheme.brandGold)
             swatchRow("background", color: WaypinTheme.background)
@@ -58,7 +60,7 @@ public struct DesignSystemCatalogView: View {
             typeRow("bodyEmphasis", font: WaypinFont.bodyEmphasis)
             typeRow("caption", font: WaypinFont.caption)
             typeRow("captionEmphasis", font: WaypinFont.captionEmphasis)
-            typeRow("numeric — ₩1,234,000", font: WaypinFont.numeric)
+            typeRow("numeric — 1,234,000 ₩", font: WaypinFont.numeric)
         }
         .listRowBackground(WaypinTheme.surface)
     }

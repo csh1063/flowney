@@ -1,13 +1,19 @@
-import ComposableArchitecture
-import DesignSystem
 import Models
 import SwiftUI
 
-struct DaySelectionCalendarView: View {
-    @Bindable var store: StoreOf<AddItemFlowFeature>
-
+public struct WaypinTripDayCalendarView: View {
     private static let calendar = Calendar(identifier: .gregorian)
     private static let weekdayHeaderLabels = ["일", "월", "화", "수", "목", "금", "토"]
+
+    private let days: [TripDay]
+    private let selectedDayID: TripDay.ID?
+    private let onSelectDay: (TripDay) -> Void
+
+    public init(days: [TripDay], selectedDayID: TripDay.ID?, onSelectDay: @escaping (TripDay) -> Void) {
+        self.days = days
+        self.selectedDayID = selectedDayID
+        self.onSelectDay = onSelectDay
+    }
 
     private enum Cell: Identifiable {
         case blank(Int)
@@ -21,39 +27,36 @@ struct DaySelectionCalendarView: View {
         }
     }
 
-    var body: some View {
-        Group {
-            if store.isLoadingDays && store.days.isEmpty {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if store.days.isEmpty {
-                ContentUnavailableView("날짜 정보를 찾을 수 없어요", systemImage: "calendar")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                ScrollView {
-                    VStack(spacing: WaypinSpacing.sm) {
-                        weekdayHeaderRow
+    public var body: some View {
+        ScrollView {
+            VStack(spacing: WaypinSpacing.md) {
+                weekdayHeaderRow
 
-                        ForEach(Array(weeks.enumerated()), id: \.offset) { _, week in
-                            if weekHasMonthLabel(week) {
-                                monthLabelRow(week)
-                            }
-                            weekRow(week)
-                        }
+                ForEach(Array(weeks.enumerated()), id: \.offset) { _, week in
+                    if weekHasMonthLabel(week) {
+                        monthLabelRow(week)
                     }
-                    .padding(WaypinSpacing.lg)
+                    weekRow(week)
                 }
             }
+            .padding(WaypinSpacing.lg)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(WaypinTheme.background)
+        .background(
+            RoundedRectangle(cornerRadius: WaypinRadius.lg, style: .continuous)
+                .fill(WaypinTheme.surface)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: WaypinRadius.lg, style: .continuous)
+                .stroke(WaypinTheme.divider, lineWidth: 1)
+        )
     }
 
     private var weekdayHeaderRow: some View {
         HStack(spacing: 0) {
             ForEach(Self.weekdayHeaderLabels, id: \.self) { label in
                 Text(label)
-                    .font(WaypinFont.caption)
+                    .font(WaypinFont.caption.weight(.semibold))
                     .foregroundStyle(WaypinTheme.textSecondary)
                     .frame(maxWidth: .infinity)
             }
@@ -65,10 +68,11 @@ struct DaySelectionCalendarView: View {
             ForEach(week) { cell in
                 Text(monthLabel(for: cell) ?? "")
                     .font(WaypinFont.captionEmphasis)
-                    .foregroundStyle(WaypinTheme.textPrimary)
+                    .foregroundStyle(WaypinTheme.accent)
                     .frame(maxWidth: .infinity)
             }
         }
+        .padding(.top, WaypinSpacing.xs)
     }
 
     private func weekRow(_ week: [Cell]) -> some View {
@@ -81,10 +85,10 @@ struct DaySelectionCalendarView: View {
     }
 
     private var cells: [Cell] {
-        guard let first = store.days.first else { return [] }
+        guard let first = days.first else { return [] }
         let firstWeekday = Self.calendar.component(.weekday, from: first.dayDate)
         let leadingBlanks = firstWeekday - 1
-        return (0..<leadingBlanks).map { .blank($0) } + store.days.map { .day($0) }
+        return (0..<leadingBlanks).map { .blank($0) } + days.map { .day($0) }
     }
 
     private var weeks: [[Cell]] {
@@ -103,13 +107,13 @@ struct DaySelectionCalendarView: View {
     }
 
     private func monthLabel(for cell: Cell) -> String? {
-        guard case let .day(day) = cell, let index = store.days.firstIndex(where: { $0.id == day.id }) else { return nil }
+        guard case let .day(day) = cell, let index = days.firstIndex(where: { $0.id == day.id }) else { return nil }
         let isMonthStart: Bool =
             if index == 0 {
                 true
             } else {
-                Self.calendar.component(.month, from: store.days[index].dayDate)
-                    != Self.calendar.component(.month, from: store.days[index - 1].dayDate)
+                Self.calendar.component(.month, from: days[index].dayDate)
+                    != Self.calendar.component(.month, from: days[index - 1].dayDate)
             }
         guard isMonthStart else { return nil }
         return "\(Self.calendar.component(.month, from: day.dayDate))월"
@@ -122,15 +126,20 @@ struct DaySelectionCalendarView: View {
             Color.clear
                 .frame(height: 40)
         case let .day(day):
-            let isSelected = day.id == store.selectedDay?.id
+            let isSelected = day.id == selectedDayID
+            let isToday = Self.calendar.isDateInToday(day.dayDate)
             Button {
-                store.send(.dayCellTapped(day))
+                onSelectDay(day)
             } label: {
                 Text("\(Self.calendar.component(.day, from: day.dayDate))")
                     .font(WaypinFont.bodyEmphasis)
-                    .foregroundStyle(isSelected ? WaypinTheme.accentLabel : WaypinTheme.textPrimary)
-                    .frame(width: 40, height: 40)
-                    .background(isSelected ? WaypinTheme.accent : WaypinTheme.surface, in: Circle())
+                    .foregroundStyle(isSelected ? WaypinTheme.fillLabel : WaypinTheme.textPrimary)
+                    .frame(width: 36, height: 36)
+                    .background(isSelected ? WaypinTheme.fill : Color.clear, in: Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(WaypinTheme.accent, lineWidth: isToday && !isSelected ? 1.5 : 0)
+                    )
             }
             .buttonStyle(.plain)
         }

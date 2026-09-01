@@ -27,6 +27,10 @@ let project = Project(
                     "GIDClientID": "$(GOOGLE_IOS_CLIENT_ID)",
                     "SupabaseHost": "$(SUPABASE_HOST)",
                     "SupabaseAnonKey": "$(SUPABASE_ANON_KEY)",
+                    "UIAppFonts": [
+                        "GothicA1-Regular.ttf",
+                        "GothicA1-SemiBold.ttf",
+                    ],
                 ]
             ),
             sources: ["Sources/**"],
@@ -36,6 +40,7 @@ let project = Project(
             entitlements: .file(path: "Waypin.entitlements"),
             dependencies: [
                 WaypinModule.root.dependency,
+                WaypinModule.designSystem.dependency,
                 .external(name: "ComposableArchitecture"),
                 .external(name: "GoogleSignIn"),
                 .external(name: "GoogleSignInSwift"),

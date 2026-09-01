@@ -13,6 +13,8 @@ public struct MyPageView: View {
 
     @State private var isAccountInfoPresented = false
     @State private var shareInboxStore: StoreOf<ShareInboxFeature>?
+    @State private var isAppearanceSheetPresented = false
+    @AppStorage(AppearanceMode.storageKey) private var appearanceModeRaw: String = AppearanceMode.system.rawValue
 
     public init(
         store: StoreOf<AuthFeature>,
@@ -79,6 +81,28 @@ public struct MyPageView: View {
                 .waypinCardListRow()
             }
 
+            Section("화면") {
+                Button {
+                    isAppearanceSheetPresented = true
+                } label: {
+                    HStack {
+                        Text("화면 모드")
+                            .font(WaypinFont.body)
+                            .foregroundStyle(WaypinTheme.textPrimary)
+                        Spacer()
+                        Text(currentAppearanceMode.displayName)
+                            .font(WaypinFont.body)
+                            .foregroundStyle(WaypinTheme.textSecondary)
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(WaypinTheme.textSecondary)
+                    }
+                    .waypinCard()
+                }
+                .buttonStyle(.plain)
+                .waypinCardListRow()
+            }
+
             Section("약관 및 정책") {
                 VStack(spacing: WaypinSpacing.md) {
                     ForEach(Array(MyPageMenuItem.placeholderItems.enumerated()), id: \.element.id) { index, item in
@@ -125,6 +149,58 @@ public struct MyPageView: View {
         }
         .onAppear { applyAutoOpenShareInboxIfNeeded() }
         .onChange(of: autoOpenShareInbox) { _, _ in applyAutoOpenShareInboxIfNeeded() }
+        .sheet(isPresented: $isAppearanceSheetPresented) {
+            appearanceSheet
+                .presentationDetents([.height(232)])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(WaypinTheme.surface)
+        }
+    }
+
+    private var appearanceSheet: some View {
+        VStack(spacing: 0) {
+            Text("화면 모드")
+                .font(WaypinFont.sectionHeader)
+                .foregroundStyle(WaypinTheme.textPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, WaypinSpacing.lg)
+                .padding(.top, WaypinSpacing.md)
+                .padding(.bottom, WaypinSpacing.sm)
+
+            ForEach(AppearanceMode.allCases, id: \.self) { mode in
+                Button {
+                    appearanceModeRaw = mode.rawValue
+                    isAppearanceSheetPresented = false
+                } label: {
+                    HStack {
+                        Text(mode.displayName)
+                            .font(WaypinFont.body)
+                            .foregroundStyle(WaypinTheme.textPrimary)
+                        Spacer()
+                        if currentAppearanceMode == mode {
+                            Image(systemName: "checkmark")
+                                .foregroundStyle(WaypinTheme.accent)
+                        }
+                    }
+                    .padding(.vertical, 14)
+                    .padding(.horizontal, WaypinSpacing.lg)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                if mode != AppearanceMode.allCases.last {
+                    Divider().padding(.leading, WaypinSpacing.lg)
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(WaypinTheme.surface)
+    }
+
+    private var currentAppearanceMode: AppearanceMode {
+        AppearanceMode(rawValue: appearanceModeRaw) ?? .system
     }
 
     private func openShareInbox() {

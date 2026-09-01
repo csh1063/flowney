@@ -24,14 +24,18 @@ public struct ShareInboxView: View {
             } else {
                 List {
                     ForEach(store.shares) { share in
+                        let isLoadingPreview = store.previews[share.id] == nil && !store.previewFailedIDs.contains(share.id)
                         SwipeToDeleteCard(
                             onDelete: { store.send(.deleteShare(share.id)) },
-                            onTap: { store.send(.rowTapped(share)) }
+                            onTap: {
+                                guard !isLoadingPreview else { return }
+                                store.send(.rowTapped(share))
+                            }
                         ) {
                             ShareRowView(
                                 share: share,
                                 preview: store.previews[share.id],
-                                isLoadingPreview: store.previews[share.id] == nil && !store.previewFailedIDs.contains(share.id)
+                                isLoadingPreview: isLoadingPreview
                             )
                         }
                         .waypinCardListRow()
@@ -113,12 +117,18 @@ private struct ShareRowView: View {
                 .font(.caption)
                 .foregroundStyle(WaypinTheme.textSecondary)
         }
-        .waypinCard()
+        .waypinCard(corners: .leadingOnly)
         .overlay {
             if isLoadingPreview {
-                RoundedRectangle(cornerRadius: WaypinRadius.lg, style: .continuous)
-                    .fill(Color.black.opacity(0.3))
-                    .overlay { ProgressView().tint(.white) }
+                UnevenRoundedRectangle(
+                    topLeadingRadius: WaypinRadius.lg,
+                    bottomLeadingRadius: WaypinRadius.lg,
+                    bottomTrailingRadius: 0,
+                    topTrailingRadius: 0,
+                    style: .continuous
+                )
+                .fill(Color.black.opacity(0.3))
+                .overlay { ProgressView().tint(.white) }
             }
         }
     }
