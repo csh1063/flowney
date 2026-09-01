@@ -170,6 +170,7 @@ public struct ItineraryFeature {
             case .onAppear:
                 guard let tripID = state.trip?.id else { return .none }
                 state.isLoading = true
+                let cachedWeatherDayIDs = Set(state.weatherByDay.keys)
                 return .run { send in
                     var days: [TripDay] = []
                     do {
@@ -194,7 +195,7 @@ public struct ItineraryFeature {
                         await send(.countriesResponse(.failure(error)))
                     }
 
-                    await fetchWeather(days: days, items: items, send: send)
+                    await fetchWeather(days: days, items: items, skippingCachedIn: cachedWeatherDayIDs, send: send)
                 }
 
             case let .daysResponse(.success(days)):
@@ -622,7 +623,13 @@ public struct ItineraryFeature {
         }
     }
 
-    private func fetchWeather(days: [TripDay], items: [ItineraryItem], send: Send<Action>) async {
+    private func fetchWeather(
+        days: [TripDay],
+        items: [ItineraryItem],
+        skippingCachedIn cachedDayIDs: Set<TripDay.ID> = [],
+        send: Send<Action>
+    ) async {
+        let days = days.filter { !cachedDayIDs.contains($0.id) }
         guard !days.isEmpty, !items.isEmpty else { return }
 
         struct DayLocation {
