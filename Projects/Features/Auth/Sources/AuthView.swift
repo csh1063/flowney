@@ -17,10 +17,10 @@ public struct AuthView: View {
 
             VStack(spacing: 8) {
                 Text("Waypin")
-                    .font(.largeTitle.bold())
+                    .font(WaypinFont.screenTitle)
                 Text("여행의 모든 순간을 하나의 경로로")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(WaypinFont.body)
+                    .foregroundStyle(WaypinTheme.textSecondary)
             }
 
             Spacer()
@@ -55,13 +55,16 @@ public struct AuthView: View {
 
             if let errorMessage = store.errorMessage {
                 Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
+                    .font(WaypinFont.caption)
+                    .foregroundStyle(WaypinTheme.error)
                     .padding(.horizontal, 24)
             }
 
             Spacer()
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(WaypinTheme.background)
+        .ignoresSafeArea(edges: .bottom)
     }
 
     private func handleAppleCompletion(_ result: Result<ASAuthorization, any Error>) {

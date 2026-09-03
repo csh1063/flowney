@@ -8,6 +8,7 @@ let project = waypinModuleProject(
         WaypinModule.models.dependency,
         WaypinModule.designSystem.dependency,
         WaypinModule.apiClient.dependency,
+        WaypinModule.addItem.dependency,
         .external(name: "ComposableArchitecture"),
     ]
 )

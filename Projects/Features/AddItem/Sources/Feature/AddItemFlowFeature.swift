@@ -20,6 +20,7 @@ public struct AddItemFlowFeature {
         public var mode: AddItemFeature.Mode
         public var linkURLText: String
         public var prefillName: String
+        public var prefillResolvedPlace: ResolvedPlace? = nil
 
         public var trips: IdentifiedArrayOf<Trip> = []
         public var isLoadingTrips = false
@@ -38,7 +39,8 @@ public struct AddItemFlowFeature {
             defaultTripID: Trip.ID? = nil,
             mode: AddItemFeature.Mode = .manual,
             linkURLText: String = "",
-            prefillName: String = ""
+            prefillName: String = "",
+            prefillResolvedPlace: ResolvedPlace? = nil
         ) {
             selectedTrip = trip
             selectedDay = day
@@ -46,12 +48,14 @@ public struct AddItemFlowFeature {
             self.mode = mode
             self.linkURLText = linkURLText
             self.prefillName = prefillName
+            self.prefillResolvedPlace = prefillResolvedPlace
             if let trip, let day, let startingSortOrder {
                 step = .form
                 var addItemState = AddItemFeature.State(tripID: trip.id, dayID: day.id, startingSortOrder: startingSortOrder)
                 addItemState.mode = mode
                 addItemState.linkURLText = linkURLText
                 addItemState.name = prefillName
+                addItemState.applyResolvedPlace(prefillResolvedPlace)
                 addItemRequest = addItemState
             } else {
                 step = .tripList
@@ -157,6 +161,7 @@ public struct AddItemFlowFeature {
                 addItemState.mode = state.mode
                 addItemState.linkURLText = state.linkURLText
                 addItemState.name = state.prefillName
+                addItemState.applyResolvedPlace(state.prefillResolvedPlace)
                 state.addItemRequest = addItemState
                 state.step = .form
                 return .none

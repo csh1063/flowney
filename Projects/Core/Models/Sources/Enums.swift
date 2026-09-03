@@ -8,7 +8,7 @@ public enum TripStatus: String, Codable, Sendable, CaseIterable {
 }
 
 public enum ItemType: String, Codable, Sendable, CaseIterable {
-    case start
+    case airport
     case sight
     case meal
     case lodge
@@ -20,7 +20,7 @@ public enum ItemType: String, Codable, Sendable, CaseIterable {
 
     public var displayName: String {
         switch self {
-        case .start: return "출발"
+        case .airport: return "공항"
         case .sight: return "관광"
         case .meal: return "식사"
         case .lodge: return "숙소"
@@ -34,7 +34,7 @@ public enum ItemType: String, Codable, Sendable, CaseIterable {
 
     public var icon: String {
         switch self {
-        case .start: return "🚩"
+        case .airport: return "✈️"
         case .sight: return "📍"
         case .meal: return "🍽️"
         case .lodge: return "🛏️"
@@ -123,18 +123,12 @@ public enum PaymentStatus: String, Codable, Sendable, CaseIterable {
     case paid
     case fixed
     case pending
-    case variable
-    case passinc
-    case free
 
     public var displayName: String {
         switch self {
         case .paid: return "결제완료"
         case .fixed: return "가격확정"
         case .pending: return "미정"
-        case .variable: return "가격변동"
-        case .passinc: return "패스포함"
-        case .free: return "무료"
         }
     }
 }

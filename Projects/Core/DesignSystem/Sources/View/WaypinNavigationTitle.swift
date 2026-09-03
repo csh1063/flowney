@@ -9,6 +9,8 @@ extension View {
                     Text(title)
                         .font(WaypinFont.sectionHeader)
                         .foregroundStyle(WaypinTheme.textPrimary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }

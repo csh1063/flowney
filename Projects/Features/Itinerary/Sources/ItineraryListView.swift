@@ -21,12 +21,8 @@ public struct ItineraryListView: View {
     public var body: some View {
         Group {
             if store.trip == nil {
-                ContentUnavailableView {
-                    Label("불러온 여행이 없어요", systemImage: "list.bullet")
-                } description: {
-                    Text("지도 탭에서 여행을 먼저 불러와주세요.")
-                } actions: {
-                    Button("여행 불러오기") { onTripListRequested() }
+                WaypinTripLoadEmptyStateView(icon: "list.bullet") {
+                    onTripListRequested()
                 }
             } else if store.isLoading && store.days.isEmpty {
                 ProgressView("불러오는 중…")

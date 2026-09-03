@@ -26,7 +26,7 @@ public struct TripListView: View {
                 } description: {
                     if let errorMessage = store.errorMessage {
                         Text(errorMessage)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(WaypinTheme.error)
                     } else {
                         Text("아래 버튼으로 첫 여행을 만들어보세요.")
                     }

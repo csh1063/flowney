@@ -100,6 +100,15 @@ public struct AddItemFeature {
             resolvedLng = item.lng
             resolvedPlaceId = item.placeId
         }
+
+        public mutating func applyResolvedPlace(_ place: ResolvedPlace?) {
+            guard let place else { return }
+            if name.isEmpty { name = place.name }
+            address = place.address ?? address
+            resolvedLat = place.lat
+            resolvedLng = place.lng
+            resolvedPlaceId = place.placeId
+        }
     }
 
     public enum Action: BindableAction {
@@ -202,6 +211,10 @@ public struct AddItemFeature {
             case .saveButtonTapped:
                 guard !state.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                     state.errorMessage = "이름을 입력해주세요."
+                    return .none
+                }
+                guard state.costAmountText.isEmpty || (state.costCategory != nil && state.paymentStatus != nil) else {
+                    state.errorMessage = "금액을 입력했으면 카테고리와 결제 상태도 선택해주세요."
                     return .none
                 }
                 state.errorMessage = nil

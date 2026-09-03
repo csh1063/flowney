@@ -160,16 +160,16 @@ public struct WaypinDateRangeCalendarView: View {
             } label: {
                 ZStack {
                     if isStart || isEnd || isInRange {
-                        Rectangle().fill(WaypinTheme.accent.opacity(0.15))
+                        Rectangle().fill(WaypinTheme.fill.opacity(0.15))
                     }
                     if isStart || isEnd {
                         Circle()
-                            .fill(WaypinTheme.accent)
+                            .fill(WaypinTheme.fill)
                             .frame(width: 40, height: 40)
                     }
                     Text("\(Self.calendar.component(.day, from: day))")
                         .font(WaypinFont.bodyEmphasis)
-                        .foregroundStyle((isStart || isEnd) ? WaypinTheme.accentLabel : WaypinTheme.textPrimary)
+                        .foregroundStyle((isStart || isEnd) ? WaypinTheme.fillLabel : WaypinTheme.textPrimary)
                 }
                 .frame(height: 40)
             }

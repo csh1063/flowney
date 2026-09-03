@@ -11,7 +11,7 @@ public struct ItineraryView: View {
     @State private var shareStore: StoreOf<TripShareFeature>?
     @State private var addItemFlowStore: StoreOf<AddItemFlowFeature>?
     @State private var isListSheetPresented = false
-    @State private var sheetDetent: PresentationDetent = .height(expandedListHeight)
+    @State private var sheetDetent: PresentationDetent = .height(Self.expandedListHeight)
     let onTripListRequested: () -> Void
 
     private let dayColumnWidth: CGFloat = 64
@@ -69,58 +69,69 @@ public struct ItineraryView: View {
                         Image(systemName: "plus")
                     }
                 }
-                ToolbarItem(placement: .secondaryAction) {
-                    Button {
-                        store.send(.searchAllRoutesButtonTapped)
-                    } label: {
-                        Label(
-                            store.isSearchingAllRoutes ? "탐색 중…" : "전체 경로 탐색",
-                            systemImage: store.isSearchingAllRoutes ? "hourglass" : "point.topleft.down.curvedto.point.bottomright.up"
-                        )
-                    }
-                    .disabled(store.isSearchingAllRoutes)
-                }
-                ToolbarItem(placement: .secondaryAction) {
-                    Button {
-                        store.send(.todayRouteRefreshButtonTapped)
-                    } label: {
-                        Label(
-                            store.isRefreshingTodayRoute ? "갱신 중…" : "오늘 경로 갱신",
-                            systemImage: store.isRefreshingTodayRoute ? "hourglass" : "arrow.clockwise"
-                        )
-                    }
-                    .disabled(store.isRefreshingTodayRoute)
-                }
-                ToolbarItem(placement: .secondaryAction) {
-                    Divider()
-                }
-                ToolbarItem(placement: .secondaryAction) {
-                    Button {
-                        onTripListRequested()
-                    } label: {
-                        Label("여행 목록", systemImage: "list.bullet")
-                    }
-                }
-                ToolbarItem(placement: .secondaryAction) {
-                    Button {
-                        if let trip = store.trip {
-                            editStore = Store(initialState: TripEditFeature.State(editing: trip, countries: Array(store.countries))) {
-                                TripEditFeature()
+                ToolbarItem(placement: .primaryAction) {
+                    Menu {
+                        Section("데이터 갱신") {
+                            Button {
+                                store.send(.searchAllRoutesButtonTapped)
+                            } label: {
+                                Label(
+                                    store.isSearchingAllRoutes ? "탐색 중…" : "전체 경로 탐색",
+                                    systemImage: store.isSearchingAllRoutes ? "hourglass" : "point.topleft.down.curvedto.point.bottomright.up"
+                                )
+                            }
+                            .disabled(store.isSearchingAllRoutes)
+
+                            Button {
+                                store.send(.todayRouteRefreshButtonTapped)
+                            } label: {
+                                Label(
+                                    store.isRefreshingTodayRoute ? "갱신 중…" : "오늘 경로 갱신",
+                                    systemImage: store.isRefreshingTodayRoute ? "hourglass" : "arrow.clockwise"
+                                )
+                            }
+                            .disabled(store.isRefreshingTodayRoute)
+
+                            Button {
+                                store.send(.refreshAllWeatherButtonTapped)
+                            } label: {
+                                Label(
+                                    store.isRefreshingWeather ? "갱신 중…" : "전체 날씨 갱신",
+                                    systemImage: store.isRefreshingWeather ? "hourglass" : "cloud.sun"
+                                )
+                            }
+                            .disabled(store.isRefreshingWeather)
+                        }
+
+                        Section("여행 관리") {
+                            Button {
+                                onTripListRequested()
+                            } label: {
+                                Label("여행 목록", systemImage: "list.bullet")
+                            }
+
+                            Button {
+                                if let trip = store.trip {
+                                    editStore = Store(initialState: TripEditFeature.State(editing: trip, countries: Array(store.countries))) {
+                                        TripEditFeature()
+                                    }
+                                }
+                            } label: {
+                                Label("여행 수정", systemImage: "pencil")
+                            }
+
+                            Button {
+                                if let trip = store.trip {
+                                    shareStore = Store(initialState: TripShareFeature.State(tripId: trip.id)) {
+                                        TripShareFeature()
+                                    }
+                                }
+                            } label: {
+                                Label("여행 공유", systemImage: "square.and.arrow.up")
                             }
                         }
                     } label: {
-                        Label("여행 수정", systemImage: "pencil")
-                    }
-                }
-                ToolbarItem(placement: .secondaryAction) {
-                    Button {
-                        if let trip = store.trip {
-                            shareStore = Store(initialState: TripShareFeature.State(tripId: trip.id)) {
-                                TripShareFeature()
-                            }
-                        }
-                    } label: {
-                        Label("여행 공유", systemImage: "square.and.arrow.up")
+                        Image(systemName: "ellipsis.circle")
                     }
                 }
             }
@@ -230,7 +241,7 @@ public struct ItineraryView: View {
         VStack(spacing: 8) {
             Label("문제가 발생했어요", systemImage: "exclamationmark.triangle")
             Text(message)
-                .font(.caption)
+                .font(WaypinFont.caption)
                 .foregroundStyle(.secondary)
         }
         .padding()
@@ -272,15 +283,15 @@ public struct ItineraryView: View {
             .padding(.top, 8)
 
             Text(store.selectedDayWeather.map(weatherSummary) ?? " ")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(WaypinFont.caption)
+                .foregroundStyle(WaypinTheme.textSecondary)
                 .padding(.bottom, 4)
         }
         .background(WaypinTheme.background)
     }
 
     private func weatherSummary(_ weather: DayWeather) -> String {
-        var text = "\(weather.icon) \(weather.tmin)°/\(weather.tmax)° 강수확률 \(weather.pop)%(\(weather.precip)mm)"
+        var text = "\(weather.icon) \(weather.tmin)°/\(weather.pop)%(\(weather.precip)mm)"
         if weather.historical {
             text += " (지난 평균)"
         }
@@ -306,7 +317,7 @@ public struct ItineraryView: View {
                 }
                 isListSheetPresented.toggle()
             } label: {
-                Image(systemName: isListSheetPresented ? "chevron.down" : "chevron.up")
+                Image(systemName: isListSheetPresented ? "chevron.down" : "list.bullet")
                     .font(.title2)
                     .padding(10)
                     .background(.thinMaterial)
@@ -349,10 +360,10 @@ public struct ItineraryView: View {
                                     .frame(width: 32)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("전체보기")
-                                        .font(.body.weight(.medium))
+                                        .font(WaypinFont.bodyEmphasis)
                                     Text("오늘 동선 한눈에 보기")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                        .font(WaypinFont.caption)
+                                        .foregroundStyle(WaypinTheme.textSecondary)
                                 }
                                 Spacer()
                                 if store.currentStopIndex == nil {
@@ -378,7 +389,7 @@ public struct ItineraryView: View {
                                         store.send(.warningIconTapped(item.id))
                                     } label: {
                                         Image(systemName: "exclamationmark.triangle.fill")
-                                            .foregroundStyle(.yellow)
+                                            .foregroundStyle(WaypinTheme.warning)
                                     }
                                     .buttonStyle(.borderless)
                                 }
@@ -444,7 +455,7 @@ public struct ItineraryView: View {
             }
         } message: {
             if let item = store.warningPopupItem {
-                Text("\(item.name)의 위치가 여행에 등록된 나라가 아니에요. 잠깐 들른 곳이면 그냥 둬도 되고, 주소가 잘못됐으면 삭제하세요.")
+                Text("\(item.name)의 위치가 여행에 등록된 나라면 그냥 둬도 되고, 주소가 잘못됐으면 삭제하세요.")
             }
         }
     }

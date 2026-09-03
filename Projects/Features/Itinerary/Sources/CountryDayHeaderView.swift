@@ -25,7 +25,7 @@ struct CountryDayHeaderView: View {
                             .font(.system(size: 11))
                     }
                     Text(segment.countryCode.flatMap { CountryCatalog.option(for: $0)?.name } ?? segment.countryCode ?? "")
-                        .font(.caption2.weight(.semibold))
+                        .font(WaypinFont.captionEmphasis)
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
                 }

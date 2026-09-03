@@ -1,9 +1,13 @@
+import APIClient
 import ComposableArchitecture
+import DesignSystem
 import Models
 import SwiftUI
 
 struct AddItemFormView: View {
     @Bindable var store: StoreOf<AddItemFeature>
+    @State private var isCurrencyManagementPresented = false
+    @State private var tripCurrencies: [String] = []
 
     var body: some View {
         Form {
@@ -23,12 +27,12 @@ struct AddItemFormView: View {
 
                 if store.resolvedLat != nil {
                     Label("위치 확인됨 — 지도에 핀/경로가 표시돼요.", systemImage: "mappin.circle.fill")
-                        .font(.caption)
-                        .foregroundStyle(.green)
+                        .font(WaypinFont.caption)
+                        .foregroundStyle(WaypinTheme.success)
                 } else {
                     Label("위치 정보 없음 — 지도에 핀이나 경로가 안 나와요.", systemImage: "exclamationmark.triangle.fill")
-                        .font(.caption)
-                        .foregroundStyle(.orange)
+                        .font(WaypinFont.caption)
+                        .foregroundStyle(WaypinTheme.warning)
                 }
             }
 
@@ -43,7 +47,7 @@ struct AddItemFormView: View {
                                 store.linkURLText = ""
                             } label: {
                                 Image(systemName: "xmark.circle.fill")
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(WaypinTheme.textSecondary)
                             }
                             .buttonStyle(.borderless)
                         }
@@ -56,8 +60,8 @@ struct AddItemFormView: View {
                     }
                     if let linkResolveErrorMessage = store.linkResolveErrorMessage {
                         Text(linkResolveErrorMessage)
-                            .font(.caption)
-                            .foregroundStyle(.red)
+                            .font(WaypinFont.caption)
+                            .foregroundStyle(WaypinTheme.error)
                     }
                 }
             }
@@ -72,8 +76,8 @@ struct AddItemFormView: View {
                         }
                     } else if store.dedupedReuseCandidates.isEmpty {
                         Text("좌표가 있는 장소가 아직 없어요. 링크로 가져온 항목이 있어야 재사용할 수 있어요.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(WaypinFont.caption)
+                            .foregroundStyle(WaypinTheme.textSecondary)
                     } else {
                         ForEach(store.dedupedReuseCandidates) { candidate in
                             Button {
@@ -83,18 +87,18 @@ struct AddItemFormView: View {
                                     Text(candidate.itemType.icon)
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(candidate.name)
-                                            .foregroundStyle(.primary)
+                                            .foregroundStyle(WaypinTheme.textPrimary)
                                         if let address = candidate.address {
                                             Text(address)
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
+                                                .font(WaypinFont.caption)
+                                                .foregroundStyle(WaypinTheme.textSecondary)
                                                 .lineLimit(1)
                                         }
                                     }
                                     Spacer()
                                     if isSelectedReuseCandidate(candidate) {
                                         Image(systemName: "checkmark.circle.fill")
-                                            .foregroundStyle(.green)
+                                            .foregroundStyle(WaypinTheme.success)
                                     }
                                 }
                             }
@@ -128,31 +132,15 @@ struct AddItemFormView: View {
             }
 
             Section("비용") {
-                HStack {
-                    TextField("금액", text: $store.costAmountText)
-                        .keyboardType(.decimalPad)
-                    TextField("통화", text: $store.costCurrency)
-                        .frame(width: 60)
-                }
-
-                if store.costCurrency.uppercased() != "KRW" && !store.costAmountText.isEmpty {
-                    TextField("원화 환산 금액 (선택 — 요금표 합계에 쓰여요)", text: $store.costAmountKRWText)
-                        .keyboardType(.decimalPad)
-                }
-
-                Picker("카테고리", selection: $store.costCategory) {
-                    Text("선택 안 함").tag(CostCategory?.none)
-                    ForEach(CostCategory.allCases, id: \.self) { category in
-                        Text(category.displayName).tag(CostCategory?.some(category))
-                    }
-                }
-
-                Picker("결제 상태", selection: $store.paymentStatus) {
-                    Text("선택 안 함").tag(PaymentStatus?.none)
-                    ForEach(PaymentStatus.allCases, id: \.self) { status in
-                        Text(status.displayName).tag(PaymentStatus?.some(status))
-                    }
-                }
+                CostInputSection(
+                    tripCurrencies: tripCurrencies,
+                    costAmountText: $store.costAmountText,
+                    costCurrency: $store.costCurrency,
+                    costAmountKRWText: $store.costAmountKRWText,
+                    costCategory: $store.costCategory,
+                    paymentStatus: $store.paymentStatus,
+                    onManageCurrenciesTapped: { isCurrencyManagementPresented = true }
+                )
             }
 
             Section("메모") {
@@ -163,7 +151,27 @@ struct AddItemFormView: View {
             if let errorMessage = store.errorMessage {
                 Section {
                     Text(errorMessage)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(WaypinTheme.error)
+                }
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(WaypinTheme.background)
+        .scrollDismissesKeyboard(.immediately)
+        .onAppear { tripCurrencies = TripCurrencyStore.read(tripID: store.tripID) }
+        .onChange(of: store.savedItem) { _, savedItem in
+            guard let currency = savedItem?.costCurrency, currency.uppercased() != "KRW" else { return }
+            guard !tripCurrencies.contains(where: { $0.uppercased() == currency.uppercased() }) else { return }
+            tripCurrencies.append(currency)
+            TripCurrencyStore.save(tripID: store.tripID, currencies: tripCurrencies)
+        }
+        .sheet(isPresented: $isCurrencyManagementPresented) {
+            CurrencyManagementView(currentCurrencies: tripCurrencies) { finalCurrencies in
+                TripCurrencyStore.save(tripID: store.tripID, currencies: finalCurrencies)
+                tripCurrencies = finalCurrencies
+                let stillValid = (["KRW"] + finalCurrencies).contains { $0.uppercased() == store.costCurrency.uppercased() }
+                if !stillValid {
+                    store.costCurrency = "KRW"
                 }
             }
         }
