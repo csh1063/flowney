@@ -52,6 +52,7 @@ let project = Project(
                     "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
                     "DEVELOPMENT_TEAM": .string(Constants.developmentTeam),
                     "CODE_SIGN_STYLE": "Automatic",
+                    "OTHER_LDFLAGS": ["-ObjC"],
                 ],
                 configurations: [
                     .debug(name: .debug, xcconfig: "Config.xcconfig"),

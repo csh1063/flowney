@@ -268,6 +268,7 @@ public struct BudgetFeature {
         Reduce { state, action in
             switch action {
             case .onAppear:
+                WaypinLog.debug("예산 화면 onAppear trip=\(state.trip.id)", category: .budget)
                 state.isLoading = true
                 state.errorMessage = nil
                 let tripID = state.trip.id
@@ -335,8 +336,10 @@ public struct BudgetFeature {
                 return .run { send in
                     do {
                         try await budgetEntryRepository.deleteEntry(id)
+                        WaypinLog.debug("예산 항목 삭제 성공 id=\(id)", category: .budget)
                         await send(.deleteEntryResponse(.success(id)))
                     } catch {
+                        WaypinLog.error("예산 항목 삭제 실패 id=\(id): \(error)", category: .budget)
                         await send(.deleteEntryResponse(.failure(error)))
                     }
                 }

@@ -1,6 +1,9 @@
 import APIClient
+import AuthenticationServices
 import ComposableArchitecture
 import Foundation
+import GoogleSignIn
+import Models
 import Supabase
 
 @Reducer
@@ -46,7 +49,7 @@ public struct AuthFeature: Sendable {
             case .onAppear:
                 return .run { send in
                     async let sessionResult = authClient.currentSession()
-                    async let minimumSplashDelay: Void? = try? Task.sleep(for: .seconds(1))
+                    async let minimumSplashDelay: Void? = try? Task.sleep(for: .seconds(2.9))
                     let session = await sessionResult
                     _ = await minimumSplashDelay
                     await send(.sessionChanged(session))
@@ -56,6 +59,7 @@ public struct AuthFeature: Sendable {
                 }
 
             case let .appleSignInCompleted(.success(credential)):
+                WaypinLog.debug("애플 로그인 성공(자격 증명), 세션 교환 시작", category: .auth)
                 state.isLoading = true
                 state.errorMessage = nil
                 return .run { send in
@@ -71,10 +75,17 @@ public struct AuthFeature: Sendable {
 
             case let .appleSignInCompleted(.failure(error)):
                 state.isLoading = false
-                state.errorMessage = error.localizedDescription
+                if let authError = error as? ASAuthorizationError, authError.code == .canceled {
+                    WaypinLog.debug("애플 로그인 취소됨", category: .auth)
+                    state.errorMessage = nil
+                } else {
+                    WaypinLog.error("애플 로그인 실패: \(error)", category: .auth)
+                    state.errorMessage = "애플 로그인에 실패했어요. 다시 시도해주세요."
+                }
                 return .none
 
             case .signInWithGoogleTapped:
+                WaypinLog.debug("구글 로그인 시작", category: .auth)
                 state.isLoading = true
                 state.errorMessage = nil
                 return .run { send in
@@ -87,6 +98,7 @@ public struct AuthFeature: Sendable {
                 }
 
             case let .googleIdTokenResponse(.success(idToken)):
+                WaypinLog.debug("구글 idToken 획득, 세션 교환 시작", category: .auth)
                 return .run { send in
                     do {
                         let session = try await authClient.signInWithIdToken(.google, idToken, nil)
@@ -98,10 +110,17 @@ public struct AuthFeature: Sendable {
 
             case let .googleIdTokenResponse(.failure(error)):
                 state.isLoading = false
-                state.errorMessage = error.localizedDescription
+                if let signInError = error as? GIDSignInError, signInError.code == .canceled {
+                    WaypinLog.debug("구글 로그인 취소됨", category: .auth)
+                    state.errorMessage = nil
+                } else {
+                    WaypinLog.error("구글 로그인 실패: \(error)", category: .auth)
+                    state.errorMessage = "구글 로그인에 실패했어요. 다시 시도해주세요."
+                }
                 return .none
 
             case let .supabaseSignInResponse(.success(session)):
+                WaypinLog.debug("Supabase 세션 교환 성공 user=\(session.user.id)", category: .auth)
                 state.isLoading = false
                 state.errorMessage = nil
                 state.session = session
@@ -109,11 +128,13 @@ public struct AuthFeature: Sendable {
                 return .send(.delegate(.signedIn(session)))
 
             case let .supabaseSignInResponse(.failure(error)):
+                WaypinLog.error("Supabase 세션 교환 실패: \(error)", category: .auth)
                 state.isLoading = false
                 state.errorMessage = error.localizedDescription
                 return .none
 
             case .signOutTapped:
+                WaypinLog.debug("로그아웃 시작", category: .auth)
                 state.isLoading = true
                 return .run { send in
                     do {
@@ -125,12 +146,14 @@ public struct AuthFeature: Sendable {
                 }
 
             case .signOutResponse(.success):
+                WaypinLog.debug("로그아웃 성공", category: .auth)
                 state.isLoading = false
                 state.session = nil
                 if state.isSignedIn { state.isSignedIn = false }
                 return .send(.delegate(.signedOut))
 
             case let .signOutResponse(.failure(error)):
+                WaypinLog.error("로그아웃 실패: \(error)", category: .auth)
                 state.isLoading = false
                 state.errorMessage = error.localizedDescription
                 return .none
@@ -139,6 +162,7 @@ public struct AuthFeature: Sendable {
                 state.isCheckingSession = false
                 state.session = session
                 let signedIn = session.map { !$0.isExpired } ?? false
+                WaypinLog.debug("세션 변경 signedIn=\(signedIn)", category: .auth)
                 if state.isSignedIn != signedIn {
                     state.isSignedIn = signedIn
                 }

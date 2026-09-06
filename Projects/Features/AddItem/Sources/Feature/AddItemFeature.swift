@@ -12,9 +12,17 @@ public struct AddItemFeature {
 
         public var displayName: String {
             switch self {
-            case .manual: return "직접 입력"
-            case .link: return "링크로 가져오기"
+            case .manual: return "직접 찾기"
+            case .link: return "구글 링크"
             case .reuse: return "기존 장소"
+            }
+        }
+
+        public var itemSource: ItemSource {
+            switch self {
+            case .manual: .manual
+            case .link: .link
+            case .reuse: .reuse
             }
         }
     }
@@ -27,7 +35,7 @@ public struct AddItemFeature {
         public var mode: Mode = .manual
         public var name: String = ""
         public var itemType: ItemType = .sight
-        public var arrivalMode: TransportMode?
+        public var arrivalMode: TransportMode? = .walk
         public var hasStartTime: Bool = false
         public var startTime: Date = .now
         public var costAmountText: String = ""
@@ -114,6 +122,7 @@ public struct AddItemFeature {
     public enum Action: BindableAction {
         case binding(BindingAction<State>)
         case modeChanged(Mode)
+        case mapLocationPicked(ResolvedPlace)
         case resolveLinkButtonTapped
         case resolveLinkResponse(Result<ResolvedPlace, any Error>)
         case reuseCandidatesResponse(Result<[ItineraryItem], any Error>)
@@ -166,6 +175,10 @@ public struct AddItemFeature {
                 state.errorMessage = error.localizedDescription
                 return .none
 
+            case let .mapLocationPicked(place):
+                state.applyResolvedPlace(place)
+                return .none
+
             case let .reuseCandidateTapped(item):
                 state.name = item.name
                 state.itemType = item.itemType
@@ -181,6 +194,7 @@ public struct AddItemFeature {
                     state.linkResolveErrorMessage = "구글맵 공유 링크를 붙여넣어주세요."
                     return .none
                 }
+                WaypinLog.debug("링크 해석 시작 url=\(trimmed)", category: .addItem)
                 state.linkURLText = trimmed
                 state.linkResolveErrorMessage = nil
                 state.isResolvingLink = true
@@ -189,11 +203,13 @@ public struct AddItemFeature {
                         let place = try await placeResolverAPIClient.resolve(trimmed)
                         await send(.resolveLinkResponse(.success(place)))
                     } catch {
+                        WaypinLog.error("링크 해석 실패: \(error)", category: .addItem)
                         await send(.resolveLinkResponse(.failure(error)))
                     }
                 }
 
             case let .resolveLinkResponse(.success(place)):
+                WaypinLog.debug("링크 해석 성공 name=\(place.name) lat=\(String(describing: place.lat)) lng=\(String(describing: place.lng))", category: .addItem)
                 state.isResolvingLink = false
                 state.linkResolveErrorMessage = nil
                 state.name = place.name
@@ -212,6 +228,12 @@ public struct AddItemFeature {
                 guard !state.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                     state.errorMessage = "이름을 입력해주세요."
                     return .none
+                }
+                if state.editingOriginalItem == nil {
+                    guard state.resolvedLat != nil, state.resolvedLng != nil else {
+                        state.errorMessage = "위치를 선택해주세요."
+                        return .none
+                    }
                 }
                 guard state.costAmountText.isEmpty || (state.costCategory != nil && state.paymentStatus != nil) else {
                     state.errorMessage = "금액을 입력했으면 카테고리와 결제 상태도 선택해주세요."
@@ -246,8 +268,8 @@ public struct AddItemFeature {
                     original.lat = state.resolvedLat
                     original.lng = state.resolvedLng
                     original.placeId = state.resolvedPlaceId
-                    if state.mode == .link || state.mode == .reuse, state.resolvedLat != nil {
-                        original.source = state.mode == .reuse ? .reuse : .link
+                    if state.resolvedLat != nil {
+                        original.source = state.mode.itemSource
                         original.sourceURL = state.mode == .link ? state.linkURLText : nil
                     }
                     original.startTime = startTimeString
@@ -259,7 +281,7 @@ public struct AddItemFeature {
                     original.notes = notes
                     item = original
                 } else {
-                    let hasResolvedLocation = (state.mode == .link || state.mode == .reuse) && state.resolvedLat != nil && state.resolvedLng != nil
+                    let hasResolvedLocation = state.resolvedLat != nil && state.resolvedLng != nil
                     item = ItineraryItem(
                         id: uuid(),
                         tripId: state.tripID,
@@ -272,7 +294,7 @@ public struct AddItemFeature {
                         lat: hasResolvedLocation ? state.resolvedLat : nil,
                         lng: hasResolvedLocation ? state.resolvedLng : nil,
                         address: address,
-                        source: state.mode == .reuse ? .reuse : (hasResolvedLocation ? .link : .manual),
+                        source: hasResolvedLocation ? state.mode.itemSource : .manual,
                         sourceURL: state.mode == .link && hasResolvedLocation ? state.linkURLText : nil,
                         startTime: startTimeString,
                         costAmount: costAmount,
@@ -285,6 +307,7 @@ public struct AddItemFeature {
                 }
 
                 let isEditing = state.editingOriginalItem != nil
+                WaypinLog.debug("일정 항목 저장 시작 isEditing=\(isEditing) name=\(item.name)", category: .addItem)
                 return .run { send in
                     do {
                         let saved = isEditing
@@ -292,11 +315,13 @@ public struct AddItemFeature {
                             : try await itineraryRepository.createItem(item)
                         await send(.saveResponse(.success(saved)))
                     } catch {
+                        WaypinLog.error("일정 항목 저장 실패: \(error)", category: .addItem)
                         await send(.saveResponse(.failure(error)))
                     }
                 }
 
             case let .saveResponse(.success(item)):
+                WaypinLog.debug("일정 항목 저장 성공 id=\(item.id)", category: .addItem)
                 state.isSaving = false
                 state.savedItem = item
                 return .send(.delegate(.itemAdded(item)))

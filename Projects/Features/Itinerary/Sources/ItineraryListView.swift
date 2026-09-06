@@ -141,19 +141,9 @@ private struct ListItemRowView: View {
                 Text(item.name)
                     .font(WaypinFont.bodyEmphasis)
                     .foregroundStyle(WaypinTheme.textPrimary)
-                HStack(spacing: WaypinSpacing.xs + 2) {
-                    if let startTime = item.startTime {
-                        Text(startTime.prefix(5))
-                    }
-                    if let mode = item.arrivalMode {
-                        Text(mode.displayName)
-                    }
-                    if !item.hasLocation {
-                        Text("장소 미정")
-                    }
-                }
-                .font(WaypinFont.caption)
-                .foregroundStyle(WaypinTheme.textSecondary)
+                subtitle
+                    .font(WaypinFont.caption)
+                    .foregroundStyle(WaypinTheme.textSecondary)
             }
 
             Spacer()
@@ -171,5 +161,21 @@ private struct ListItemRowView: View {
             }
         }
         .waypinCard()
+    }
+
+    @ViewBuilder
+    private var subtitle: some View {
+        if item.startTime != nil || item.arrivalMode != nil {
+            HStack(spacing: WaypinSpacing.xs + 2) {
+                if let startTime = item.startTime {
+                    Text(startTime.prefix(5))
+                }
+                if let mode = item.arrivalMode {
+                    Text(mode.displayName)
+                }
+            }
+        } else if !item.hasLocation {
+            Text("장소 미정")
+        }
     }
 }

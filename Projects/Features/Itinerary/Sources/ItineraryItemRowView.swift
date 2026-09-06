@@ -14,19 +14,9 @@ struct ItineraryItemRowView: View {
             VStack(alignment: .leading, spacing: WaypinSpacing.xs / 2) {
                 Text(item.name)
                     .font(WaypinFont.bodyEmphasis)
-                HStack(spacing: WaypinSpacing.xs + 2) {
-                    if let startTime = item.startTime {
-                        Text(startTime.prefix(5))
-                    }
-                    if let mode = item.arrivalMode {
-                        Text(mode.displayName)
-                    }
-                    if !item.hasLocation {
-                        Text("장소 미정")
-                    }
-                }
-                .font(WaypinFont.caption)
-                .foregroundStyle(WaypinTheme.textSecondary)
+                subtitle
+                    .font(WaypinFont.caption)
+                    .foregroundStyle(WaypinTheme.textSecondary)
             }
 
             Spacer()
@@ -38,6 +28,22 @@ struct ItineraryItemRowView: View {
                     .foregroundStyle(WaypinTheme.textSecondary)
             }
         }
-        .padding(.vertical, WaypinSpacing.xs)
+        .padding(.vertical, WaypinSpacing.xs + 4)
+    }
+
+    @ViewBuilder
+    private var subtitle: some View {
+        if item.startTime != nil || item.arrivalMode != nil {
+            HStack(spacing: WaypinSpacing.xs + 2) {
+                if let startTime = item.startTime {
+                    Text(startTime.prefix(5))
+                }
+                if let mode = item.arrivalMode {
+                    Text(mode.displayName)
+                }
+            }
+        } else if !item.hasLocation {
+            Text("장소 미정")
+        }
     }
 }

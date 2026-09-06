@@ -36,20 +36,36 @@ public struct AuthView: View {
                 }
                 .signInWithAppleButtonStyle(.black)
                 .frame(height: 50)
+                .disabled(store.isLoading)
 
                 Button {
                     store.send(.signInWithGoogleTapped)
                 } label: {
-                    HStack {
-                        Image(systemName: "g.circle.fill")
+                    HStack(spacing: 10) {
+                        Image("GoogleLogo")
+                            .resizable()
+                            .frame(width: 20, height: 20)
                         Text("Google로 계속하기")
-                            .fontWeight(.medium)
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundStyle(Color(light: "#1F1F1F", dark: "#E3E3E3"))
                     }
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
+                    .background(Color(light: "#FFFFFF", dark: "#131314"))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .strokeBorder(Color(light: "#747775", dark: "#8E918F"), lineWidth: 1)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .contentShape(RoundedRectangle(cornerRadius: 10))
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.plain)
                 .disabled(store.isLoading)
+
+                if store.isLoading {
+                    ProgressView()
+                        .padding(.top, 4)
+                }
             }
             .padding(.horizontal, 24)
 

@@ -15,8 +15,8 @@ public struct ItineraryView: View {
     let onTripListRequested: () -> Void
 
     private let dayColumnWidth: CGFloat = 64
-    private static let expandedListHeight: CGFloat = 220
-    private static let collapsedListHeight: CGFloat = 120
+    private static let expandedListHeight: CGFloat = 228
+    private static let collapsedListHeight: CGFloat = 128
 
     public init(store: StoreOf<ItineraryFeature>, onTripListRequested: @escaping () -> Void) {
         self.store = store
@@ -59,6 +59,13 @@ public struct ItineraryView: View {
                     .padding(.bottom, max(24, currentListHeight - UIApplication.shared.keyWindowSafeAreaInsets.bottom))
             }
         }
+        .overlay(alignment: .bottomLeading) {
+            if store.trip != nil, let label = activeRefreshLabel {
+                RefreshStatusLabel(text: label)
+                    .padding(.leading, 16)
+                    .padding(.bottom, max(24, currentListHeight - UIApplication.shared.keyWindowSafeAreaInsets.bottom))
+            }
+        }
         .waypinLeadingTitle(store.trip?.name ?? "Waypin")
         .toolbar {
             if store.trip != nil {
@@ -80,7 +87,7 @@ public struct ItineraryView: View {
                                     systemImage: store.isSearchingAllRoutes ? "hourglass" : "point.topleft.down.curvedto.point.bottomright.up"
                                 )
                             }
-                            .disabled(store.isSearchingAllRoutes)
+                            .disabled(store.isSearchingAllRoutes || store.isRefreshingTodayRoute)
 
                             Button {
                                 store.send(.todayRouteRefreshButtonTapped)
@@ -90,7 +97,7 @@ public struct ItineraryView: View {
                                     systemImage: store.isRefreshingTodayRoute ? "hourglass" : "arrow.clockwise"
                                 )
                             }
-                            .disabled(store.isRefreshingTodayRoute)
+                            .disabled(store.isSearchingAllRoutes || store.isRefreshingTodayRoute)
 
                             Button {
                                 store.send(.refreshAllWeatherButtonTapped)
@@ -213,6 +220,7 @@ public struct ItineraryView: View {
         RouteMapView(
             items: store.trip != nil ? store.selectedItems : [],
             legs: store.trip != nil ? store.selectedDayLegs : [],
+            countries: store.trip != nil ? store.countries : [],
             currentStopIndex: store.trip != nil ? store.currentStopIndex : nil,
             animateTrigger: store.animateTrigger,
             jumpTrigger: store.jumpTrigger,
@@ -296,6 +304,13 @@ public struct ItineraryView: View {
             text += " (지난 평균)"
         }
         return text
+    }
+
+    private var activeRefreshLabel: String? {
+        if store.isSearchingAllRoutes { return "전체 경로 갱신 중" }
+        if store.isRefreshingTodayRoute { return "오늘 경로 갱신 중" }
+        if store.isRefreshingWeather { return "날씨 갱신 중" }
+        return nil
     }
 
     private var controlBar: some View {
@@ -470,5 +485,22 @@ extension UIApplication {
             return .zero
         }
         return window.safeAreaInsets
+    }
+}
+
+private struct RefreshStatusLabel: View {
+    let text: String
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 0.45)) { context in
+            let dotCount = Int(context.date.timeIntervalSinceReferenceDate / 0.45) % 3 + 1
+            Text(text + String(repeating: ".", count: dotCount))
+                .font(.system(size: 12))
+                .foregroundStyle(WaypinTheme.textSecondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(.thinMaterial)
+                .clipShape(Capsule())
+        }
     }
 }

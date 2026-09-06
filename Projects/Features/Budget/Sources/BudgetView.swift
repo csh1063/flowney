@@ -91,18 +91,14 @@ public struct BudgetView: View {
             }
 
             Section {
-                Picker(
-                    "정렬",
+                WaypinSegmentedControl(
                     selection: Binding(
                         get: { store.sortMode },
                         set: { store.send(.setSortMode($0)) }
-                    )
-                ) {
-                    ForEach(BudgetFeature.State.SortMode.allCases, id: \.self) { mode in
-                        Text(mode.displayName).tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented)
+                    ),
+                    options: BudgetFeature.State.SortMode.allCases,
+                    label: \.displayName
+                )
                 .listRowBackground(Color.clear)
             }
 

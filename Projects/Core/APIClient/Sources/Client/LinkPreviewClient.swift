@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import Foundation
+import Models
 
 public struct LinkPreview: Equatable, Sendable {
     public var name: String?
@@ -29,6 +30,7 @@ extension LinkPreviewClient: DependencyKey {
     public static let liveValue: LinkPreviewClient = {
         LinkPreviewClient(
             fetch: { urlString in
+                WaypinLog.debug("link preview 요청 url=\(urlString)", category: .network)
                 guard let url = URL(string: urlString) else { throw LinkPreviewError.invalidURL }
 
                 var request = URLRequest(url: url)
@@ -40,10 +42,14 @@ extension LinkPreviewClient: DependencyKey {
                     (200 ..< 300).contains(httpResponse.statusCode),
                     let html = String(data: data, encoding: .utf8)
                 else {
+                    let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+                    WaypinLog.error("link preview HTTP \(statusCode)", category: .network)
                     throw LinkPreviewError.requestFailed
                 }
 
-                return LinkPreviewParser.parse(html: html)
+                let preview = LinkPreviewParser.parse(html: html)
+                WaypinLog.debug("link preview 파싱 결과 name=\(String(describing: preview.name))", category: .network)
+                return preview
             }
         )
     }()

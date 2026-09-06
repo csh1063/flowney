@@ -60,11 +60,13 @@ public struct TripShareFeature {
                 return .none
 
             case let .shareResponse(.failure(error)):
+                WaypinLog.error("공유 정보 조회 실패: \(error)", category: .share)
                 state.isLoading = false
                 state.errorMessage = error.localizedDescription
                 return .none
 
             case .generateButtonTapped:
+                WaypinLog.debug("공유 링크 생성 시작 trip=\(state.tripId)", category: .share)
                 state.isSaving = true
                 state.errorMessage = nil
                 let tripID = state.tripId
@@ -75,17 +77,20 @@ public struct TripShareFeature {
                 }
 
             case let .upsertResponse(.success(share)):
+                WaypinLog.debug("공유 링크 생성 성공 token=\(share.token)", category: .share)
                 state.isSaving = false
                 state.share = share
                 state.password = ""
                 return .none
 
             case let .upsertResponse(.failure(error)):
+                WaypinLog.error("공유 링크 생성 실패: \(error)", category: .share)
                 state.isSaving = false
                 state.errorMessage = error.localizedDescription
                 return .none
 
             case .revokeButtonTapped:
+                WaypinLog.debug("공유 링크 해제 시작 trip=\(state.tripId)", category: .share)
                 state.isSaving = true
                 state.errorMessage = nil
                 let tripID = state.tripId
@@ -99,6 +104,7 @@ public struct TripShareFeature {
                 return .none
 
             case let .revokeResponse(.failure(error)):
+                WaypinLog.error("공유 링크 해제 실패: \(error)", category: .share)
                 state.isSaving = false
                 state.errorMessage = error.localizedDescription
                 return .none

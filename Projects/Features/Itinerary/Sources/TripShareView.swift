@@ -17,11 +17,11 @@ struct TripShareView: View {
                             .padding(.top, WaypinSpacing.xxl)
                     } else {
                         sectionBlock("공개 범위") {
-                            Picker("공개 범위", selection: $store.visibility) {
-                                Text("전체공개").tag(TripShare.Visibility.pub)
-                                Text("비공개").tag(TripShare.Visibility.password)
-                            }
-                            .pickerStyle(.segmented)
+                            WaypinSegmentedControl(
+                                selection: $store.visibility,
+                                options: [TripShare.Visibility.pub, .password],
+                                label: { $0 == .pub ? "전체공개" : "비공개" }
+                            )
 
                             if store.visibility == .password {
                                 SecureField(
