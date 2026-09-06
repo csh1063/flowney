@@ -35,7 +35,7 @@ public struct AddItemFeature {
         public var mode: Mode = .manual
         public var name: String = ""
         public var itemType: ItemType = .sight
-        public var arrivalMode: TransportMode? = .walk
+        public var arrivalMode: TransportMode?
         public var hasStartTime: Bool = false
         public var startTime: Date = .now
         public var costAmountText: String = ""

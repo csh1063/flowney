@@ -124,11 +124,12 @@ struct AddItemFormView: View {
                         }
                     }
 
-                    Picker("이동수단", selection: arrivalModeBinding) {
-                        ForEach(TransportMode.allCases.filter { $0 != .start }, id: \.self) { mode in
-                            Text(mode.displayName).tag(mode)
+                    Picker("이동수단", selection: transportBucketBinding) {
+                        ForEach(TransportBucket.allCases, id: \.self) { bucket in
+                            Text(bucket.label).tag(bucket)
                         }
                     }
+                    .pickerStyle(.segmented)
 
                     Toggle("시간 지정", isOn: $store.hasStartTime)
                     if store.hasStartTime {
@@ -204,10 +205,35 @@ struct AddItemFormView: View {
         return candidate.lat == resolvedLat && candidate.lng == resolvedLng
     }
 
-    private var arrivalModeBinding: Binding<TransportMode> {
+    private enum TransportBucket: String, CaseIterable {
+        case walk, transit, car
+
+        var label: String {
+            switch self {
+            case .walk: return "걷기"
+            case .transit: return "대중교통"
+            case .car: return "차"
+            }
+        }
+    }
+
+    private var transportBucketBinding: Binding<TransportBucket> {
         Binding(
-            get: { store.arrivalMode ?? .walk },
-            set: { store.send(.binding(.set(\.arrivalMode, $0))) }
+            get: {
+                switch store.arrivalMode {
+                case .car: return .car
+                case .walk: return .walk
+                default: return .transit
+                }
+            },
+            set: { newValue in
+                let mode: TransportMode? = switch newValue {
+                case .walk: .walk
+                case .transit: nil
+                case .car: .car
+                }
+                store.send(.binding(.set(\.arrivalMode, mode)))
+            }
         )
     }
 }
