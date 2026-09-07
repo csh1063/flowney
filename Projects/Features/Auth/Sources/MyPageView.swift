@@ -155,6 +155,7 @@ public struct MyPageView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(WaypinTheme.surface)
         }
+        .waypinLifecycleLog(category: .auth)
     }
 
     private var appearanceSheet: some View {

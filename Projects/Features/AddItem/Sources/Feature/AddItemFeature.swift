@@ -154,6 +154,13 @@ public struct AddItemFeature {
 
             case let .modeChanged(newMode):
                 state.mode = newMode
+                if state.editingOriginalItem == nil {
+                    state.name = ""
+                    state.address = ""
+                    state.resolvedLat = nil
+                    state.resolvedLng = nil
+                    state.resolvedPlaceId = nil
+                }
                 guard newMode == .reuse, state.reuseCandidates.isEmpty, !state.isLoadingReuseCandidates else { return .none }
                 state.isLoadingReuseCandidates = true
                 return .run { [tripID = state.tripID] send in

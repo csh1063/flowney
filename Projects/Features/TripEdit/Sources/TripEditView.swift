@@ -106,6 +106,7 @@ public struct TripEditView: View {
                     }
                 }
             }
+            .waypinLifecycleLog(category: .tripEdit)
         }
     }
 

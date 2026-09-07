@@ -214,6 +214,7 @@ public struct ItineraryView: View {
                 TripShareView(store: shareStore)
             }
         }
+        .waypinLifecycleLog(category: .itinerary)
     }
 
     private var mapLayer: some View {

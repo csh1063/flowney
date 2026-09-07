@@ -193,6 +193,7 @@ struct AddItemFormView: View {
                 }
             }
         }
+        .waypinLifecycleLog(category: .addItem)
     }
 
     private var mapPickerInitialCoordinate: CLLocationCoordinate2D? {

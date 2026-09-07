@@ -211,6 +211,7 @@ public struct BudgetView: View {
                 )
             }
         }
+        .waypinLifecycleLog(category: .budget)
     }
 
     private func summaryRow(title: String, amount: Decimal) -> some View {

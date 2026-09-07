@@ -22,13 +22,20 @@ extension WeatherAPIClient: DependencyKey {
                 let today = Calendar.current.startOfDay(for: .now)
                 let forecastDates = sorted.filter { date in
                     let diff = Calendar.current.dateComponents([.day], from: today, to: Calendar.current.startOfDay(for: date)).day ?? 0
-                    return (0 ... 15).contains(diff)
+                    return (0 ... 14).contains(diff)
                 }
-                let historicalDates = sorted.filter { date in !forecastDates.contains(date) }
+                var historicalDates = sorted.filter { date in !forecastDates.contains(date) }
 
                 var result: [String: DayWeather] = [:]
-                if !forecastDates.isEmpty, let forecastResult = try? await Self.fetchForecastRange(lat: lat, lng: lng, dates: forecastDates) {
-                    result.merge(forecastResult) { _, new in new }
+                if !forecastDates.isEmpty {
+                    if let forecastResult = try? await Self.fetchForecastRange(lat: lat, lng: lng, dates: forecastDates) {
+                        result.merge(forecastResult) { _, new in new }
+                        let missing = forecastDates.filter { result[dateFormatter.string(from: $0)] == nil }
+                        historicalDates.append(contentsOf: missing)
+                    } else {
+                        WaypinLog.warning("forecast 요청 실패, historical fallback으로 대체 dates=\(forecastDates.count)", category: .weather)
+                        historicalDates.append(contentsOf: forecastDates)
+                    }
                 }
                 if !historicalDates.isEmpty, let historicalResult = try? await Self.fetchHistoricalAverageRange(lat: lat, lng: lng, dates: historicalDates) {
                     result.merge(historicalResult) { _, new in new }
@@ -79,6 +86,7 @@ extension WeatherAPIClient: DependencyKey {
     }
 
     private static func fetchHistoricalAverageRange(lat: Double, lng: Double, dates: [Date]) async throws -> [String: DayWeather] {
+        let dates = dates.sorted()
         guard let first = dates.first, let last = dates.last else { return [:] }
         let calendar = Calendar(identifier: .gregorian)
         let dayCount = calendar.dateComponents([.day], from: first, to: last).day ?? 0

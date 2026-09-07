@@ -39,6 +39,7 @@ public struct ItineraryListView: View {
         }
         .background(WaypinTheme.background)
         .waypinLeadingTitle(store.trip?.name ?? "리스트")
+        .waypinLifecycleLog(category: .itinerary)
     }
 
     @ViewBuilder
