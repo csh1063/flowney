@@ -1,6 +1,6 @@
 import SwiftUI
 
-public struct WaypinSegmentedControl<Option: Hashable>: View {
+public struct FlowneySegmentedControl<Option: Hashable>: View {
     @Binding private var selection: Option
     private let options: [Option]
     private let label: (Option) -> String
@@ -12,7 +12,7 @@ public struct WaypinSegmentedControl<Option: Hashable>: View {
     }
 
     public var body: some View {
-        HStack(spacing: WaypinSpacing.sm) {
+        HStack(spacing: FlowneySpacing.sm) {
             ForEach(options, id: \.self) { option in
                 let isSelected = option == selection
                 Button {
@@ -21,17 +21,17 @@ public struct WaypinSegmentedControl<Option: Hashable>: View {
                     }
                 } label: {
                     Text(label(option))
-                        .font(WaypinFont.bodyEmphasis)
-                        .foregroundStyle(isSelected ? WaypinTheme.fillLabel : WaypinTheme.textPrimary)
+                        .font(FlowneyFont.bodyEmphasis)
+                        .foregroundStyle(isSelected ? FlowneyTheme.fillLabel : FlowneyTheme.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, WaypinSpacing.sm + 2)
-                        .background(isSelected ? WaypinTheme.fill : WaypinTheme.divider)
-                        .clipShape(RoundedRectangle(cornerRadius: WaypinRadius.sm, style: .continuous))
+                        .padding(.vertical, FlowneySpacing.sm + 2)
+                        .background(isSelected ? FlowneyTheme.fill : FlowneyTheme.divider)
+                        .clipShape(RoundedRectangle(cornerRadius: FlowneyRadius.sm, style: .continuous))
                         .overlay(
-                            RoundedRectangle(cornerRadius: WaypinRadius.sm, style: .continuous)
-                                .strokeBorder(isSelected ? Color.clear : WaypinTheme.accent.opacity(0.4), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: FlowneyRadius.sm, style: .continuous)
+                                .strokeBorder(isSelected ? Color.clear : FlowneyTheme.accent.opacity(0.4), lineWidth: 1)
                         )
                 }
                 .buttonStyle(.plain)

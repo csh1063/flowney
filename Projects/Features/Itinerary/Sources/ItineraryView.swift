@@ -44,7 +44,7 @@ public struct ItineraryView: View {
                 }
 
                 if store.trip != nil, store.days.isEmpty {
-                    WaypinTheme.background
+                    FlowneyTheme.background
                         .overlay { ProgressView() }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .ignoresSafeArea(edges: .bottom)
@@ -66,7 +66,7 @@ public struct ItineraryView: View {
                     .padding(.bottom, max(24, currentListHeight - UIApplication.shared.keyWindowSafeAreaInsets.bottom))
             }
         }
-        .waypinLeadingTitle(store.trip?.name ?? "Waypin")
+        .flowneyLeadingTitle(store.trip?.name ?? "Flowney")
         .toolbar {
             if store.trip != nil {
                 ToolbarItem(placement: .primaryAction) {
@@ -214,7 +214,8 @@ public struct ItineraryView: View {
                 TripShareView(store: shareStore)
             }
         }
-        .waypinLifecycleLog(category: .itinerary)
+//        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 20) }
+        .flowneyLifecycleLog(category: .itinerary)
     }
 
     private var mapLayer: some View {
@@ -240,17 +241,17 @@ public struct ItineraryView: View {
         } label: {
             Label("여행 불러오기", systemImage: "airplane")
         }
-        .buttonStyle(.waypinPrimary)
-        .padding(.horizontal, WaypinSpacing.xxl)
-        .padding(.vertical, WaypinSpacing.md)
-        .background(WaypinTheme.background)
+        .buttonStyle(.flowneyPrimary)
+        .padding(.horizontal, FlowneySpacing.xxl)
+        .padding(.vertical, FlowneySpacing.md)
+        .background(FlowneyTheme.background)
     }
 
     private func errorBanner(_ message: String) -> some View {
         VStack(spacing: 8) {
             Label("문제가 발생했어요", systemImage: "exclamationmark.triangle")
             Text(message)
-                .font(WaypinFont.caption)
+                .font(FlowneyFont.caption)
                 .foregroundStyle(.secondary)
         }
         .padding()
@@ -292,11 +293,11 @@ public struct ItineraryView: View {
             .padding(.top, 8)
 
             Text(store.selectedDayWeather.map(weatherSummary) ?? " ")
-                .font(WaypinFont.caption)
-                .foregroundStyle(WaypinTheme.textSecondary)
+                .font(FlowneyFont.caption)
+                .foregroundStyle(FlowneyTheme.textSecondary)
                 .padding(.bottom, 4)
         }
-        .background(WaypinTheme.background)
+        .background(FlowneyTheme.background)
     }
 
     private func weatherSummary(_ weather: DayWeather) -> String {
@@ -376,10 +377,10 @@ public struct ItineraryView: View {
                                     .frame(width: 32)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("전체보기")
-                                        .font(WaypinFont.bodyEmphasis)
+                                        .font(FlowneyFont.bodyEmphasis)
                                     Text("오늘 동선 한눈에 보기")
-                                        .font(WaypinFont.caption)
-                                        .foregroundStyle(WaypinTheme.textSecondary)
+                                        .font(FlowneyFont.caption)
+                                        .foregroundStyle(FlowneyTheme.textSecondary)
                                 }
                                 Spacer()
                                 if store.currentStopIndex == nil {
@@ -395,7 +396,7 @@ public struct ItineraryView: View {
 
                         ForEach(store.selectedItems) { item in
                             HStack {
-                                ItineraryItemRowView(item: item)
+                                ItineraryItemRowView(item: item, costEntry: store.entries[id: item.id])
                                 if store.selectedItemID == item.id {
                                     Image(systemName: "location.fill")
                                         .foregroundStyle(.blue)
@@ -405,7 +406,7 @@ public struct ItineraryView: View {
                                         store.send(.warningIconTapped(item.id))
                                     } label: {
                                         Image(systemName: "exclamationmark.triangle.fill")
-                                            .foregroundStyle(WaypinTheme.warning)
+                                            .foregroundStyle(FlowneyTheme.warning)
                                     }
                                     .buttonStyle(.borderless)
                                 }
@@ -497,7 +498,7 @@ private struct RefreshStatusLabel: View {
             let dotCount = Int(context.date.timeIntervalSinceReferenceDate / 0.45) % 3 + 1
             Text(text + String(repeating: ".", count: dotCount))
                 .font(.system(size: 12))
-                .foregroundStyle(WaypinTheme.textSecondary)
+                .foregroundStyle(FlowneyTheme.textSecondary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
                 .background(.thinMaterial)

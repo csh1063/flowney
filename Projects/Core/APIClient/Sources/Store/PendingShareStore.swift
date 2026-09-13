@@ -15,7 +15,7 @@ public struct PendingShare: Codable, Equatable, Identifiable, Sendable {
 }
 
 public enum PendingShareStore {
-    public static let appGroupID = "group.com.baci.waypin"
+    public static let appGroupID = "group.com.baci.flowney"
     private static let sharesKey = "pendingShares"
 
     public static func save(url: String) {

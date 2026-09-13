@@ -8,6 +8,7 @@ import SwiftUI
 public struct ShareInboxView: View {
     @Bindable var store: StoreOf<ShareInboxFeature>
     @State private var addItemFlowStore: StoreOf<AddItemFlowFeature>?
+    @State private var revealedRowID: AnyHashable?
 
     public init(store: StoreOf<ShareInboxFeature>) {
         self.store = store
@@ -19,13 +20,15 @@ public struct ShareInboxView: View {
                 ContentUnavailableView {
                     Label("공유받은 링크가 없어요", systemImage: "link")
                 } description: {
-                    Text("구글맵 등에서 장소를 공유할 때 'Waypin에 추가'를 선택하면 여기에 모여요.")
+                    Text("구글맵 등에서 장소를 공유할 때 'Flowney에 추가'를 선택하면 여기에 모여요.")
                 }
             } else {
                 List {
                     ForEach(store.shares) { share in
                         let isLoadingPreview = store.previews[share.id] == nil && !store.previewFailedIDs.contains(share.id)
                         SwipeToDeleteCard(
+                            id: share.id,
+                            revealedID: $revealedRowID,
                             onDelete: { store.send(.deleteShare(share.id)) },
                             onTap: {
                                 guard !isLoadingPreview else { return }
@@ -38,7 +41,7 @@ public struct ShareInboxView: View {
                                 isLoadingPreview: isLoadingPreview
                             )
                         }
-                        .waypinCardListRow()
+                        .flowneyCardListRow()
                         .task { store.send(.rowAppeared(share)) }
                     }
                 }
@@ -46,8 +49,8 @@ public struct ShareInboxView: View {
                 .scrollContentBackground(.hidden)
             }
         }
-        .background(WaypinTheme.background)
-        .waypinLeadingTitle("공유 링크함")
+        .background(FlowneyTheme.background)
+        .flowneyLeadingTitle("공유 링크함")
         .task { store.send(.onAppear) }
         .onChange(of: store.addItemFlowRequest) { _, request in
             guard let request else { return }
@@ -94,41 +97,35 @@ private struct ShareRowView: View {
                 HStack(spacing: 6) {
                     if !share.hasBeenAdded {
                         Circle()
-                            .fill(WaypinTheme.accent)
+                            .fill(FlowneyTheme.accent)
                             .frame(width: 8, height: 8)
                     }
                     Text(displayName)
-                        .font(WaypinFont.bodyEmphasis)
-                        .foregroundStyle(WaypinTheme.textPrimary)
+                        .font(FlowneyFont.bodyEmphasis)
+                        .foregroundStyle(FlowneyTheme.textPrimary)
                         .lineLimit(1)
                 }
                 if let locationText {
                     Text(locationText)
-                        .font(WaypinFont.caption)
-                        .foregroundStyle(WaypinTheme.textSecondary)
+                        .font(FlowneyFont.caption)
+                        .foregroundStyle(FlowneyTheme.textSecondary)
                         .lineLimit(1)
                 }
                 Text(savedAtText)
-                    .font(WaypinFont.caption)
-                    .foregroundStyle(WaypinTheme.textSecondary)
+                    .font(FlowneyFont.caption)
+                    .foregroundStyle(FlowneyTheme.textSecondary)
             }
             Spacer()
             Image(systemName: "chevron.right")
                 .font(.caption)
-                .foregroundStyle(WaypinTheme.textSecondary)
+                .foregroundStyle(FlowneyTheme.textSecondary)
         }
-        .waypinCard(corners: .leadingOnly)
+        .padding(FlowneySpacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .overlay {
             if isLoadingPreview {
-                UnevenRoundedRectangle(
-                    topLeadingRadius: WaypinRadius.lg,
-                    bottomLeadingRadius: WaypinRadius.lg,
-                    bottomTrailingRadius: 0,
-                    topTrailingRadius: 0,
-                    style: .continuous
-                )
-                .fill(Color.black.opacity(0.3))
-                .overlay { ProgressView().tint(.white) }
+                Color.black.opacity(0.3)
+                    .overlay { ProgressView().tint(.white) }
             }
         }
     }
@@ -151,10 +148,10 @@ private struct ShareRowView: View {
 
     private var placeholderImage: some View {
         RoundedRectangle(cornerRadius: 10, style: .continuous)
-            .fill(WaypinTheme.background)
+            .fill(FlowneyTheme.background)
             .overlay {
                 Image(systemName: "mappin.and.ellipse")
-                    .foregroundStyle(WaypinTheme.textSecondary)
+                    .foregroundStyle(FlowneyTheme.textSecondary)
             }
     }
 

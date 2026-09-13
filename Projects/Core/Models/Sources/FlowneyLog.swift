@@ -1,7 +1,7 @@
 import Foundation
 import os
 
-public enum WaypinLogCategory: String {
+public enum FlowneyLogCategory: String {
     case app
     case auth
     case tripList
@@ -15,13 +15,13 @@ public enum WaypinLogCategory: String {
     case network
 }
 
-public enum WaypinLog {
+public enum FlowneyLog {
     #if DEBUG
-    private static let subsystem = "com.baci.waypin"
+    private static let subsystem = "com.baci.flowney"
     private static var loggers: [String: Logger] = [:]
     private static let lock = NSLock()
 
-    private static func logger(for category: WaypinLogCategory) -> Logger {
+    private static func logger(for category: FlowneyLogCategory) -> Logger {
         lock.lock()
         defer { lock.unlock() }
         if let existing = loggers[category.rawValue] {
@@ -35,7 +35,7 @@ public enum WaypinLog {
 
     public static func debug(
         _ message: @autoclosure () -> String,
-        category: WaypinLogCategory = .app,
+        category: FlowneyLogCategory = .app,
         file: String = #fileID,
         line: Int = #line
     ) {
@@ -47,7 +47,7 @@ public enum WaypinLog {
 
     public static func info(
         _ message: @autoclosure () -> String,
-        category: WaypinLogCategory = .app
+        category: FlowneyLogCategory = .app
     ) {
         #if DEBUG
         let resolved = message()
@@ -57,7 +57,7 @@ public enum WaypinLog {
 
     public static func warning(
         _ message: @autoclosure () -> String,
-        category: WaypinLogCategory = .app
+        category: FlowneyLogCategory = .app
     ) {
         #if DEBUG
         let resolved = message()
@@ -67,7 +67,7 @@ public enum WaypinLog {
 
     public static func error(
         _ message: @autoclosure () -> String,
-        category: WaypinLogCategory = .app
+        category: FlowneyLogCategory = .app
     ) {
         #if DEBUG
         let resolved = message()

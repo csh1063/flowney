@@ -1,6 +1,6 @@
 import CoreGraphics
 
-public enum WaypinSpacing {
+public enum FlowneySpacing {
     public static let xs: CGFloat = 4
     public static let sm: CGFloat = 8
     public static let md: CGFloat = 12
@@ -9,7 +9,7 @@ public enum WaypinSpacing {
     public static let xxl: CGFloat = 32
 }
 
-public enum WaypinRadius {
+public enum FlowneyRadius {
     public static let sm: CGFloat = 8
     public static let md: CGFloat = 12
     public static let lg: CGFloat = 16

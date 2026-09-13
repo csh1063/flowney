@@ -9,14 +9,14 @@ public struct TripSummaryRowView: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: WaypinSpacing.xs) {
+        VStack(alignment: .leading, spacing: FlowneySpacing.xs) {
             Text(trip.name)
-                .font(WaypinFont.sectionHeader)
+                .font(FlowneyFont.sectionHeader)
             Text(dateRangeText)
-                .font(WaypinFont.caption)
-                .foregroundStyle(WaypinTheme.textSecondary)
+                .font(FlowneyFont.caption)
+                .foregroundStyle(FlowneyTheme.textSecondary)
         }
-        .waypinCard()
+        .flowneyCard()
     }
 
     private var dateRangeText: String {

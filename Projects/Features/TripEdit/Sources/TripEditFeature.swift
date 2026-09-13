@@ -78,7 +78,7 @@ public struct TripEditFeature {
                     return calendar
                 }()
 
-                WaypinLog.debug("트립 저장 시작 isCreating=\(isCreating) name=\(name)", category: .tripEdit)
+                FlowneyLog.debug("트립 저장 시작 isCreating=\(isCreating) name=\(name)", category: .tripEdit)
                 return .run { send in
                     do {
                         guard let userID = await authClient.currentSession()?.user.id else {
@@ -108,12 +108,12 @@ public struct TripEditFeature {
                                 calendar: calendar
                             )
                             _ = try await tripsRepository.createDays(days)
-                            WaypinLog.debug("트립 생성 완료 days=\(days.count)", category: .tripEdit)
+                            FlowneyLog.debug("트립 생성 완료 days=\(days.count)", category: .tripEdit)
                         }
 
                         await send(.saveResponse(.success(savedTrip)))
                     } catch {
-                        WaypinLog.error("트립 저장 실패: \(error)", category: .tripEdit)
+                        FlowneyLog.error("트립 저장 실패: \(error)", category: .tripEdit)
                         await send(.saveResponse(.failure(error)))
                     }
                 }

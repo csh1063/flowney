@@ -8,6 +8,7 @@ public struct TripEditView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isCalendarExpanded = false
     @State private var colorSelections: [TripCountry.ID: Color] = [:]
+    @State private var colorPickerCountry: TripCountry?
     @FocusState private var focusedField: Field?
 
     private let localCountries: [TripCountry]
@@ -25,42 +26,42 @@ public struct TripEditView: View {
     public var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: WaypinSpacing.lg) {
+                VStack(alignment: .leading, spacing: FlowneySpacing.lg) {
                     sectionBlock("여행 이름") {
                         TextField("예: 유럽 배낭여행", text: $store.name)
                             .focused($focusedField, equals: .name)
                     }
 
                     sectionBlock("여행 기간") {
-                        VStack(alignment: .leading, spacing: WaypinSpacing.sm) {
+                        VStack(alignment: .leading, spacing: FlowneySpacing.sm) {
                             Button {
                                 isCalendarExpanded.toggle()
                             } label: {
                                 HStack {
-                                    VStack(alignment: .leading, spacing: WaypinSpacing.xs) {
+                                    VStack(alignment: .leading, spacing: FlowneySpacing.xs) {
                                         Text(dateRangeText)
-                                            .font(WaypinFont.bodyEmphasis)
-                                            .foregroundStyle(WaypinTheme.textPrimary)
+                                            .font(FlowneyFont.bodyEmphasis)
+                                            .foregroundStyle(FlowneyTheme.textPrimary)
                                         Text(nightsText)
-                                            .font(WaypinFont.caption)
-                                            .foregroundStyle(WaypinTheme.textSecondary)
+                                            .font(FlowneyFont.caption)
+                                            .foregroundStyle(FlowneyTheme.textSecondary)
                                     }
                                     Spacer()
                                     Image(systemName: isCalendarExpanded ? "chevron.up" : "chevron.down")
-                                        .foregroundStyle(WaypinTheme.textSecondary)
+                                        .foregroundStyle(FlowneyTheme.textSecondary)
                                 }
                             }
                             .buttonStyle(.plain)
 
                             if isCalendarExpanded {
-                                WaypinDateRangeCalendarView(startDate: $store.startDate, endDate: $store.endDate)
+                                FlowneyDateRangeCalendarView(startDate: $store.startDate, endDate: $store.endDate)
                             }
                         }
                     }
 
                     if !localCountries.isEmpty {
                         sectionBlock("나라별 색") {
-                            VStack(spacing: WaypinSpacing.sm) {
+                            VStack(spacing: FlowneySpacing.sm) {
                                 ForEach(localCountries) { country in
                                     countryColorRow(country)
                                 }
@@ -70,15 +71,15 @@ public struct TripEditView: View {
 
                     if let errorMessage = store.errorMessage {
                         Text(errorMessage)
-                            .font(WaypinFont.caption)
-                            .foregroundStyle(WaypinTheme.error)
-                            .waypinCard()
+                            .font(FlowneyFont.caption)
+                            .foregroundStyle(FlowneyTheme.error)
+                            .flowneyCard()
                     }
                 }
-                .padding(WaypinSpacing.lg)
+                .padding(FlowneySpacing.lg)
             }
-            .simultaneousGesture(TapGesture().onEnded { focusedField = nil })
-            .background(WaypinTheme.background)
+            .scrollDismissesKeyboard(.immediately)
+            .background(FlowneyTheme.background)
             .navigationTitle(store.isEditing ? "여행 수정" : "새 여행")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -106,7 +107,15 @@ public struct TripEditView: View {
                     }
                 }
             }
-            .waypinLifecycleLog(category: .tripEdit)
+            .flowneyLifecycleLog(category: .tripEdit)
+            .sheet(item: $colorPickerCountry) { country in
+                CountryColorPickerSheet(
+                    countryCode: country.countryCode,
+                    initialColorHex: (colorSelections[country.id] ?? Color(hex: country.color)).toHexString(),
+                    onConfirm: { colorSelections[country.id] = $0 },
+                    onReset: { colorSelections[country.id] = Color(hex: CountryCatalog.option(for: country.countryCode)?.defaultColorHex ?? FlowneyTheme.brandNavyHex) }
+                )
+            }
         }
     }
 
@@ -137,30 +146,36 @@ public struct TripEditView: View {
     }
 
     private func sectionBlock<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: WaypinSpacing.sm) {
+        VStack(alignment: .leading, spacing: FlowneySpacing.sm) {
             Text(title)
-                .font(WaypinFont.sectionHeader)
-                .foregroundStyle(WaypinTheme.textSecondary)
+                .font(FlowneyFont.sectionHeader)
+                .foregroundStyle(FlowneyTheme.textSecondary)
             content()
         }
-        .waypinCard()
+        .flowneyCard()
     }
 
     private func countryColorRow(_ country: TripCountry) -> some View {
-        ColorPicker(
-            selection: Binding(
-                get: { colorSelections[country.id] ?? Color(hex: country.color) },
-                set: { colorSelections[country.id] = $0 }
-            )
-        ) {
-            HStack(spacing: WaypinSpacing.sm) {
+        Button {
+            colorPickerCountry = country
+        } label: {
+            HStack(spacing: FlowneySpacing.sm) {
                 Text(CountryCatalog.flagEmoji(for: country.countryCode))
                     .font(.system(size: 22))
                 Text(CountryCatalog.option(for: country.countryCode)?.name ?? country.countryCode)
-                    .font(WaypinFont.body)
-                    .foregroundStyle(WaypinTheme.textPrimary)
+                    .font(FlowneyFont.body)
+                    .foregroundStyle(FlowneyTheme.textPrimary)
+                Spacer()
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(colorSelections[country.id] ?? Color(hex: country.color))
+                    .frame(width: 40, height: 24)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .stroke(FlowneyTheme.divider, lineWidth: 1)
+                    )
             }
         }
+        .buttonStyle(.plain)
         .padding(.vertical, 4)
         .frame(minHeight: 40)
     }

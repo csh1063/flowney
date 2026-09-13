@@ -1,3 +1,4 @@
+import APIClient
 import ComposableArchitecture
 import CoreLocation
 import DesignSystem
@@ -21,7 +22,7 @@ struct RouteMapView: UIViewRepresentable {
     func makeUIView(context: Context) -> GMSMapView {
         let options = GMSMapViewOptions()
         options.camera = GMSCameraPosition.camera(withLatitude: 37.5665, longitude: 126.9780, zoom: 12)
-        options.backgroundColor = WaypinTheme.backgroundUIColor
+        options.backgroundColor = FlowneyTheme.backgroundUIColor
         let mapView = GMSMapView(options: options)
         mapView.delegate = context.coordinator
         context.coordinator.mapView = mapView
@@ -184,7 +185,7 @@ struct RouteMapView: UIViewRepresentable {
             case .airport: return UIColor(hex: "#4A6FA5")
             case .sight: return UIColor(hex: "#2F8F5B")
             case .meal: return UIColor(hex: "#F5A623")
-            case .lodge: return WaypinTheme.brandGoldUIColor
+            case .lodge: return FlowneyTheme.brandGoldUIColor
             case .transport: return UIColor(hex: "#0072CE")
             case .activity: return UIColor(hex: "#8E44AD")
             case .shopping: return UIColor(hex: "#E85D9A")
@@ -334,7 +335,7 @@ struct RouteMapView: UIViewRepresentable {
                 let leg = legs[id: "\(fromItem.id)-\(toItem.id)"]
                 let legKey = leg?.id ?? "\(fromItem.id)-\(toItem.id)"
                 let hasRealRoute = leg?.status == .ok
-                let mutedColor = fromItem.countryCode.flatMap { countryColors[$0] } ?? WaypinTheme.brandNavyUIColor
+                let mutedColor = fromItem.countryCode.flatMap { countryColors[$0] } ?? FlowneyTheme.brandNavyUIColor
 
                 let segments: [LegPolylineSegment]
                 if let leg, RoutePathDecoding.usesSteppedRendering(leg: leg, hasRealRoute: hasRealRoute) {
@@ -547,7 +548,7 @@ struct RouteMapView: UIViewRepresentable {
 
         private static func paletteColor(_ mode: TransportMode) -> UIColor {
             switch mode {
-            case .walk: return WaypinTheme.brandNavyUIColor
+            case .walk: return FlowneyTheme.brandNavyUIColor
             case .metro: return UIColor(hex: "#0072CE")
             case .tram: return UIColor(hex: "#00A651")
             case .bus: return UIColor(hex: "#F5A623")
@@ -569,6 +570,7 @@ struct RouteMapView: UIViewRepresentable {
         func mapView(_ mapView: GMSMapView, idleAt position: GMSCameraPosition) {
             refreshMutedDashLengths(zoom: position.zoom)
             engine?.cameraDidBecomeIdle()
+            LastMapCameraStore.save(lat: position.target.latitude, lng: position.target.longitude)
         }
     }
 }

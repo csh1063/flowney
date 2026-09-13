@@ -27,6 +27,7 @@ public struct TripListFeature {
 
     @Dependency(\.tripsRepository) var tripsRepository
     @Dependency(\.itineraryRepository) var itineraryRepository
+    @Dependency(\.budgetEntryRepository) var budgetEntryRepository
     @Dependency(\.authClient) var authClient
 
     public init() {}
@@ -39,10 +40,10 @@ public struct TripListFeature {
                 return .run { send in
                     do {
                         let trips = try await tripsRepository.fetchTrips()
-                        WaypinLog.debug("트립 목록 조회 성공 count=\(trips.count)", category: .tripList)
+                        FlowneyLog.debug("트립 목록 조회 성공 count=\(trips.count)", category: .tripList)
                         await send(.tripsResponse(.success(trips)))
                     } catch {
-                        WaypinLog.error("트립 목록 조회 실패: \(error)", category: .tripList)
+                        FlowneyLog.error("트립 목록 조회 실패: \(error)", category: .tripList)
                         await send(.tripsResponse(.failure(error)))
                     }
                 }
@@ -68,10 +69,10 @@ public struct TripListFeature {
                     for id in ids {
                         do {
                             try await tripsRepository.deleteTrip(id)
-                            WaypinLog.debug("트립 삭제 성공 id=\(id)", category: .tripList)
+                            FlowneyLog.debug("트립 삭제 성공 id=\(id)", category: .tripList)
                             await send(.deleteTripResponse(.success(id)))
                         } catch {
-                            WaypinLog.error("트립 삭제 실패 id=\(id): \(error)", category: .tripList)
+                            FlowneyLog.error("트립 삭제 실패 id=\(id): \(error)", category: .tripList)
                             await send(.deleteTripResponse(.failure(error)))
                         }
                     }
@@ -107,6 +108,13 @@ public struct TripListFeature {
                                 }
                                 await group.waitForAll()
                             }
+                        }
+
+                        await withTaskGroup(of: Void.self) { group in
+                            for entry in seed.budgetEntries {
+                                group.addTask { _ = try? await budgetEntryRepository.createEntry(entry) }
+                            }
+                            await group.waitForAll()
                         }
 
                         await send(.loadSampleDataResponse(.success(savedTrip)))

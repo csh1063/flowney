@@ -13,6 +13,18 @@ public enum SampleTravelData {
 
     public static let ownerId = UUID(uuidString: "00000000-0000-0000-0000-0000000000A1")!
 
+    private enum CostItemID {
+        static let vanGoghMuseum = UUID(uuidString: "00000000-0000-0000-0000-0000000000B1")!
+        static let parisLodging = UUID(uuidString: "00000000-0000-0000-0000-0000000000B2")!
+        static let louvre = UUID(uuidString: "00000000-0000-0000-0000-0000000000B3")!
+        static let orsayMuseum = UUID(uuidString: "00000000-0000-0000-0000-0000000000B4")!
+        static let disneylandParis = UUID(uuidString: "00000000-0000-0000-0000-0000000000B5")!
+        static let grindelwaldLodging = UUID(uuidString: "00000000-0000-0000-0000-0000000000B6")!
+        static let first = UUID(uuidString: "00000000-0000-0000-0000-0000000000B7")!
+        static let zurichLodging = UUID(uuidString: "00000000-0000-0000-0000-0000000000B8")!
+        static let fraumunster = UUID(uuidString: "00000000-0000-0000-0000-0000000000B9")!
+    }
+
     public static let trip = Trip(
         id: UUID(uuidString: "00000000-0000-0000-0000-0000000000A2")!,
         ownerId: ownerId,
@@ -236,7 +248,6 @@ public enum SampleTravelData {
             sortOrder: 1,
             itemType: .sight,
             arrivalMode: .train,
-            plannedDurationMin: 12,
             name: "슬로터데이크역",
             lat: 52.3888,
             lng: 4.8384
@@ -247,7 +258,6 @@ public enum SampleTravelData {
             sortOrder: 2,
             itemType: .lodge,
             arrivalMode: .walk,
-            plannedDurationMin: 8,
             name: "숙소 Hotel2Stay",
             lat: 52.3869,
             lng: 4.8395
@@ -271,7 +281,6 @@ public enum SampleTravelData {
             sortOrder: 1,
             itemType: .sight,
             arrivalMode: .tram,
-            plannedDurationMin: 15,
             name: "요르단 지구",
             lat: 52.3738,
             lng: 4.8825
@@ -282,7 +291,6 @@ public enum SampleTravelData {
             sortOrder: 2,
             itemType: .meal,
             arrivalMode: .walk,
-            plannedDurationMin: 15,
             name: "Foodhallen",
             lat: 52.3671,
             lng: 4.8681
@@ -293,7 +301,6 @@ public enum SampleTravelData {
             sortOrder: 3,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 10,
             name: "본델파크 서쪽입구",
             lat: 52.3573,
             lng: 4.8615
@@ -304,7 +311,6 @@ public enum SampleTravelData {
             sortOrder: 4,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 5,
             name: "장미정원(Rosarium)",
             lat: 52.3576252,
             lng: 4.8635713
@@ -315,7 +321,6 @@ public enum SampleTravelData {
             sortOrder: 5,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 5,
             name: "노천극장",
             lat: 52.3584457,
             lng: 4.8710183
@@ -326,7 +331,6 @@ public enum SampleTravelData {
             sortOrder: 6,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 5,
             name: "Blauwe Theehuis",
             lat: 52.3588283,
             lng: 4.8725491
@@ -337,7 +341,6 @@ public enum SampleTravelData {
             sortOrder: 7,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 15,
             name: "본델파크 동쪽출구",
             lat: 52.3616,
             lng: 4.8823
@@ -348,7 +351,6 @@ public enum SampleTravelData {
             sortOrder: 8,
             itemType: .sight,
             arrivalMode: .tram,
-            plannedDurationMin: 15,
             name: "중앙역",
             lat: 52.3791,
             lng: 4.9003
@@ -359,7 +361,6 @@ public enum SampleTravelData {
             sortOrder: 9,
             itemType: .sight,
             arrivalMode: .boat,
-            plannedDurationMin: 5,
             name: "부익슬로터베흐 선착장(북)",
             lat: 52.38216,
             lng: 4.90299
@@ -370,7 +371,6 @@ public enum SampleTravelData {
             sortOrder: 10,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 3,
             name: "A'DAM 룩아웃",
             lat: 52.3839583,
             lng: 4.9021118
@@ -381,7 +381,6 @@ public enum SampleTravelData {
             sortOrder: 11,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 5,
             name: "EYE 필름뮤지엄",
             lat: 52.384348,
             lng: 4.901276
@@ -392,7 +391,6 @@ public enum SampleTravelData {
             sortOrder: 12,
             itemType: .sight,
             arrivalMode: .boat,
-            plannedDurationMin: 5,
             name: "중앙역 복귀",
             lat: 52.3791,
             lng: 4.9003
@@ -403,7 +401,6 @@ public enum SampleTravelData {
             sortOrder: 13,
             itemType: .lodge,
             arrivalMode: .tram,
-            plannedDurationMin: 15,
             name: "숙소 복귀",
             lat: 52.3869,
             lng: 4.8395
@@ -427,7 +424,6 @@ public enum SampleTravelData {
             sortOrder: 1,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 3,
             name: "슬로터데이크역",
             lat: 52.3888,
             lng: 4.8384
@@ -438,7 +434,6 @@ public enum SampleTravelData {
             sortOrder: 2,
             itemType: .sight,
             arrivalMode: .train,
-            plannedDurationMin: 14,
             name: "Zaandijk Zaanse Schans역",
             lat: 52.4472,
             lng: 4.8195
@@ -449,7 +444,6 @@ public enum SampleTravelData {
             sortOrder: 3,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 13,
             name: "잔세스칸스 마을",
             lat: 52.4747,
             lng: 4.8172
@@ -460,7 +454,6 @@ public enum SampleTravelData {
             sortOrder: 4,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 3,
             name: "카타리나 후버 치즈농장",
             lat: 52.473447,
             lng: 4.8184268
@@ -471,7 +464,6 @@ public enum SampleTravelData {
             sortOrder: 5,
             itemType: .sight,
             arrivalMode: .train,
-            plannedDurationMin: 18,
             name: "중앙역",
             lat: 52.3791,
             lng: 4.9003
@@ -482,7 +474,6 @@ public enum SampleTravelData {
             sortOrder: 6,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 5,
             name: "시내 관광지",
             lat: 52.373,
             lng: 4.8926
@@ -493,7 +484,6 @@ public enum SampleTravelData {
             sortOrder: 7,
             itemType: .lodge,
             arrivalMode: .tram,
-            plannedDurationMin: 15,
             name: "숙소 복귀",
             lat: 52.3869,
             lng: 4.8395
@@ -517,7 +507,6 @@ public enum SampleTravelData {
             sortOrder: 1,
             itemType: .sight,
             arrivalMode: .tram,
-            plannedDurationMin: 15,
             name: "중앙역",
             lat: 52.3791,
             lng: 4.9003
@@ -528,7 +517,6 @@ public enum SampleTravelData {
             sortOrder: 2,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 5,
             name: "스투시",
             lat: 52.375607,
             lng: 4.900723
@@ -539,7 +527,6 @@ public enum SampleTravelData {
             sortOrder: 3,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 5,
             name: "기울어진집(담락)",
             lat: 52.3745,
             lng: 4.8977
@@ -550,26 +537,20 @@ public enum SampleTravelData {
             sortOrder: 4,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 5,
             name: "담광장",
             lat: 52.3730701,
             lng: 4.8926473
         ),
         ItineraryItem(
+            id: CostItemID.vanGoghMuseum,
             tripId: trip.id,
             dayId: day4.id,
             sortOrder: 5,
             itemType: .sight,
             arrivalMode: .tram,
-            plannedDurationMin: 5,
             name: "반고흐미술관",
             lat: 52.3584,
-            lng: 4.8811,
-            costAmount: 50.00,
-            costCurrency: "EUR",
-            costAmountKRW: 84500,
-            costCategory: .entrance,
-            paymentStatus: .paid
+            lng: 4.8811
         ),
         ItineraryItem(
             tripId: trip.id,
@@ -577,7 +558,6 @@ public enum SampleTravelData {
             sortOrder: 6,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 2,
             name: "쇼핑가(미술관 인근)",
             lat: 52.3576,
             lng: 4.879
@@ -588,7 +568,6 @@ public enum SampleTravelData {
             sortOrder: 7,
             itemType: .lodge,
             arrivalMode: .tram,
-            plannedDurationMin: 15,
             name: "숙소 복귀",
             lat: 52.3869,
             lng: 4.8395
@@ -612,7 +591,6 @@ public enum SampleTravelData {
             sortOrder: 1,
             itemType: .sight,
             arrivalMode: .tram,
-            plannedDurationMin: 15,
             name: "암스테르담 중앙역",
             lat: 52.3791,
             lng: 4.9003
@@ -623,26 +601,20 @@ public enum SampleTravelData {
             sortOrder: 2,
             itemType: .sight,
             arrivalMode: .train,
-            plannedDurationMin: 200,
             name: "파리 북역",
             lat: 48.8809,
             lng: 2.3553
         ),
         ItineraryItem(
+            id: CostItemID.parisLodging,
             tripId: trip.id,
             dayId: day5.id,
             sortOrder: 3,
             itemType: .lodge,
             arrivalMode: .metro,
-            plannedDurationMin: 10,
             name: "파리 숙소",
             lat: 48.8512671,
-            lng: 2.3664701,
-            costAmount: 1128.86,
-            costCurrency: "EUR",
-            costAmountKRW: 1907773,
-            costCategory: .lodging,
-            paymentStatus: .paid
+            lng: 2.3664701
         ),
     ]
 
@@ -663,7 +635,6 @@ public enum SampleTravelData {
             sortOrder: 1,
             itemType: .sight,
             arrivalMode: .metro,
-            plannedDurationMin: 4,
             name: "샤틀레역",
             lat: 48.8583,
             lng: 2.347
@@ -674,26 +645,20 @@ public enum SampleTravelData {
             sortOrder: 2,
             itemType: .meal,
             arrivalMode: .walk,
-            plannedDurationMin: 3,
             name: "라 파리지엔느 레알",
             lat: 48.8608,
             lng: 2.3458
         ),
         ItineraryItem(
+            id: CostItemID.louvre,
             tripId: trip.id,
             dayId: day6.id,
             sortOrder: 3,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 10,
             name: "루브르 박물관",
             lat: 48.8606,
-            lng: 2.3376,
-            costAmount: 66.27,
-            costCurrency: "EUR",
-            costAmountKRW: 112000,
-            costCategory: .entrance,
-            paymentStatus: .paid
+            lng: 2.3376
         ),
         ItineraryItem(
             tripId: trip.id,
@@ -701,7 +666,6 @@ public enum SampleTravelData {
             sortOrder: 4,
             itemType: .meal,
             arrivalMode: .walk,
-            plannedDurationMin: 10,
             name: "Le P'tit Bistrot",
             lat: 48.8577,
             lng: 2.3494
@@ -712,7 +676,6 @@ public enum SampleTravelData {
             sortOrder: 5,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 10,
             name: "Bourse de Commerce",
             lat: 48.8628,
             lng: 2.3428
@@ -723,7 +686,6 @@ public enum SampleTravelData {
             sortOrder: 6,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 5,
             name: "팔레루아얄",
             lat: 48.8637569,
             lng: 2.3371261
@@ -734,7 +696,6 @@ public enum SampleTravelData {
             sortOrder: 7,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 2,
             name: "메르시 2호점",
             lat: 48.864525,
             lng: 2.3360862
@@ -745,7 +706,6 @@ public enum SampleTravelData {
             sortOrder: 8,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 5,
             name: "alpha",
             lat: 48.86324,
             lng: 2.3341187
@@ -756,7 +716,6 @@ public enum SampleTravelData {
             sortOrder: 9,
             itemType: .meal,
             arrivalMode: .walk,
-            plannedDurationMin: 5,
             name: "뫼리스",
             lat: 48.86566,
             lng: 2.32784
@@ -767,7 +726,6 @@ public enum SampleTravelData {
             sortOrder: 10,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 5,
             name: "콩코르드 광장",
             lat: 48.8656,
             lng: 2.3212
@@ -778,7 +736,6 @@ public enum SampleTravelData {
             sortOrder: 11,
             itemType: .sight,
             arrivalMode: .metro,
-            plannedDurationMin: 8,
             name: "오페라 가르니에",
             lat: 48.8719697,
             lng: 2.3316014
@@ -789,7 +746,6 @@ public enum SampleTravelData {
             sortOrder: 12,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 3,
             name: "갤러리 라파예트 오스만",
             lat: 48.8736224,
             lng: 2.3321099
@@ -800,7 +756,6 @@ public enum SampleTravelData {
             sortOrder: 13,
             itemType: .lodge,
             arrivalMode: .metro,
-            plannedDurationMin: 15,
             name: "숙소 복귀",
             lat: 48.8512671,
             lng: 2.3664701
@@ -819,20 +774,15 @@ public enum SampleTravelData {
             lng: 2.3664701
         ),
         ItineraryItem(
+            id: CostItemID.orsayMuseum,
             tripId: trip.id,
             dayId: day7.id,
             sortOrder: 1,
             itemType: .sight,
             arrivalMode: .metro,
-            plannedDurationMin: 10,
             name: "오르세미술관",
             lat: 48.8599614,
-            lng: 2.3265614,
-            costAmount: 32.00,
-            costCurrency: "EUR",
-            costAmountKRW: 54080,
-            costCategory: .entrance,
-            paymentStatus: .paid
+            lng: 2.3265614
         ),
         ItineraryItem(
             tripId: trip.id,
@@ -840,7 +790,6 @@ public enum SampleTravelData {
             sortOrder: 2,
             itemType: .meal,
             arrivalMode: .walk,
-            plannedDurationMin: 3,
             name: "Cinq-Mars",
             lat: 48.8586028,
             lng: 2.3269472
@@ -851,7 +800,6 @@ public enum SampleTravelData {
             sortOrder: 3,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 10,
             name: "APC Surplus",
             lat: 48.8557279,
             lng: 2.3335114
@@ -862,7 +810,6 @@ public enum SampleTravelData {
             sortOrder: 4,
             itemType: .meal,
             arrivalMode: .walk,
-            plannedDurationMin: 3,
             name: "카페 드 플로르",
             lat: 48.8541588,
             lng: 2.3326046
@@ -873,7 +820,6 @@ public enum SampleTravelData {
             sortOrder: 5,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 5,
             name: "TASCHEN Store",
             lat: 48.8538128,
             lng: 2.3380656
@@ -884,7 +830,6 @@ public enum SampleTravelData {
             sortOrder: 6,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 10,
             name: "퐁뇌프",
             lat: 48.8566969,
             lng: 2.3408412
@@ -895,7 +840,6 @@ public enum SampleTravelData {
             sortOrder: 7,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 8,
             name: "생미셸 광장",
             lat: 48.8535025,
             lng: 2.343778
@@ -906,7 +850,6 @@ public enum SampleTravelData {
             sortOrder: 8,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 10,
             name: "노트르담",
             lat: 48.8529682,
             lng: 2.3499021
@@ -917,7 +860,6 @@ public enum SampleTravelData {
             sortOrder: 9,
             itemType: .meal,
             arrivalMode: .walk,
-            plannedDurationMin: 5,
             name: "La Parisienne",
             lat: 48.8499455,
             lng: 2.3497819
@@ -928,7 +870,6 @@ public enum SampleTravelData {
             sortOrder: 10,
             itemType: .lodge,
             arrivalMode: .walk,
-            plannedDurationMin: 10,
             name: "숙소 복귀",
             lat: 48.8512671,
             lng: 2.3664701
@@ -952,7 +893,6 @@ public enum SampleTravelData {
             sortOrder: 1,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 5,
             name: "메르시",
             lat: 48.8607214,
             lng: 2.3668319
@@ -963,7 +903,6 @@ public enum SampleTravelData {
             sortOrder: 2,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 10,
             name: "앙팡시장",
             lat: 48.8627249,
             lng: 2.3622569
@@ -974,7 +913,6 @@ public enum SampleTravelData {
             sortOrder: 3,
             itemType: .meal,
             arrivalMode: .walk,
-            plannedDurationMin: 5,
             name: "LULU 크레페",
             lat: 48.8629922,
             lng: 2.3620888
@@ -985,7 +923,6 @@ public enum SampleTravelData {
             sortOrder: 4,
             itemType: .sight,
             arrivalMode: .metro,
-            plannedDurationMin: 20,
             name: "마미쉐(빵집)",
             lat: 48.8800888,
             lng: 2.3435419
@@ -996,7 +933,6 @@ public enum SampleTravelData {
             sortOrder: 5,
             itemType: .sight,
             arrivalMode: .bus,
-            plannedDurationMin: 4,
             name: "몽마르뜨(사크레쾨르)",
             lat: 48.8861929,
             lng: 2.3430895
@@ -1007,7 +943,6 @@ public enum SampleTravelData {
             sortOrder: 6,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 10,
             name: "사랑해벽",
             lat: 48.884856,
             lng: 2.3385644
@@ -1018,7 +953,6 @@ public enum SampleTravelData {
             sortOrder: 7,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 2,
             name: "물랭루즈",
             lat: 48.8841,
             lng: 2.3322
@@ -1029,7 +963,6 @@ public enum SampleTravelData {
             sortOrder: 8,
             itemType: .meal,
             arrivalMode: .walk,
-            plannedDurationMin: 10,
             name: "Peppe Pizzeria Martyrs",
             lat: 48.8810102,
             lng: 2.339982
@@ -1040,7 +973,6 @@ public enum SampleTravelData {
             sortOrder: 9,
             itemType: .lodge,
             arrivalMode: .metro,
-            plannedDurationMin: 10,
             name: "숙소 복귀",
             lat: 48.8512671,
             lng: 2.3664701
@@ -1064,7 +996,6 @@ public enum SampleTravelData {
             sortOrder: 1,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 10,
             name: "Marché Bastille",
             lat: 48.8548,
             lng: 2.3699
@@ -1075,7 +1006,6 @@ public enum SampleTravelData {
             sortOrder: 2,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 15,
             name: "앙팡시장",
             lat: 48.8627249,
             lng: 2.3622569
@@ -1086,7 +1016,6 @@ public enum SampleTravelData {
             sortOrder: 3,
             itemType: .meal,
             arrivalMode: .walk,
-            plannedDurationMin: 10,
             name: "BigLove",
             lat: 48.8620551,
             lng: 2.3636352
@@ -1097,7 +1026,6 @@ public enum SampleTravelData {
             sortOrder: 4,
             itemType: .sight,
             arrivalMode: .metro,
-            plannedDurationMin: 5,
             name: "몽쥬약국",
             lat: 48.8426219,
             lng: 2.3519269
@@ -1108,7 +1036,6 @@ public enum SampleTravelData {
             sortOrder: 5,
             itemType: .meal,
             arrivalMode: .walk,
-            plannedDurationMin: 3,
             name: "Au P'tit Grec",
             lat: 48.8427933,
             lng: 2.3495547
@@ -1119,7 +1046,6 @@ public enum SampleTravelData {
             sortOrder: 6,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 15,
             name: "뤽상부르공원",
             lat: 48.8466144,
             lng: 2.3363309
@@ -1130,7 +1056,6 @@ public enum SampleTravelData {
             sortOrder: 7,
             itemType: .lodge,
             arrivalMode: .metro,
-            plannedDurationMin: 5,
             name: "숙소 복귀",
             lat: 48.8512671,
             lng: 2.3664701
@@ -1154,26 +1079,20 @@ public enum SampleTravelData {
             sortOrder: 1,
             itemType: .sight,
             arrivalMode: .train,
-            plannedDurationMin: 45,
             name: "마른라발레 셰시역",
             lat: 48.8677,
             lng: 2.783
         ),
         ItineraryItem(
+            id: CostItemID.disneylandParis,
             tripId: trip.id,
             dayId: day10.id,
             sortOrder: 2,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 5,
             name: "디즈니랜드 파리",
             lat: 48.8673858,
-            lng: 2.783593,
-            costAmount: 121.96,
-            costCurrency: "EUR",
-            costAmountKRW: 206120,
-            costCategory: .activity,
-            paymentStatus: .paid
+            lng: 2.783593
         ),
         ItineraryItem(
             tripId: trip.id,
@@ -1181,7 +1100,6 @@ public enum SampleTravelData {
             sortOrder: 3,
             itemType: .lodge,
             arrivalMode: .train,
-            plannedDurationMin: 45,
             name: "숙소 복귀",
             lat: 48.8512671,
             lng: 2.3664701
@@ -1205,7 +1123,6 @@ public enum SampleTravelData {
             sortOrder: 1,
             itemType: .sight,
             arrivalMode: .metro,
-            plannedDurationMin: 20,
             name: "개선문",
             lat: 48.8738,
             lng: 2.295
@@ -1216,7 +1133,6 @@ public enum SampleTravelData {
             sortOrder: 2,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 15,
             name: "샹젤리제",
             lat: 48.868709,
             lng: 2.3099296
@@ -1227,7 +1143,6 @@ public enum SampleTravelData {
             sortOrder: 3,
             itemType: .sight,
             arrivalMode: .metro,
-            plannedDurationMin: 15,
             name: "마르스광장",
             lat: 48.8556,
             lng: 2.2986
@@ -1238,7 +1153,6 @@ public enum SampleTravelData {
             sortOrder: 4,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 15,
             name: "트로카데로",
             lat: 48.8619502,
             lng: 2.288682
@@ -1249,7 +1163,6 @@ public enum SampleTravelData {
             sortOrder: 5,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 10,
             name: "바토파리지앵 선착장",
             lat: 48.860385,
             lng: 2.293565
@@ -1260,7 +1173,6 @@ public enum SampleTravelData {
             sortOrder: 6,
             itemType: .lodge,
             arrivalMode: .metro,
-            plannedDurationMin: 15,
             name: "숙소 복귀",
             lat: 48.8512671,
             lng: 2.3664701
@@ -1284,7 +1196,6 @@ public enum SampleTravelData {
             sortOrder: 1,
             itemType: .sight,
             arrivalMode: .metro,
-            plannedDurationMin: 8,
             name: "파리 리옹역",
             lat: 48.8443,
             lng: 2.3744
@@ -1295,7 +1206,6 @@ public enum SampleTravelData {
             sortOrder: 2,
             itemType: .sight,
             arrivalMode: .train,
-            plannedDurationMin: 180,
             name: "바젤 SBB",
             lat: 47.5476,
             lng: 7.5896
@@ -1306,7 +1216,6 @@ public enum SampleTravelData {
             sortOrder: 3,
             itemType: .sight,
             arrivalMode: .train,
-            plannedDurationMin: 155,
             name: "인터라켄 오스트",
             lat: 46.6908,
             lng: 7.8666
@@ -1317,26 +1226,20 @@ public enum SampleTravelData {
             sortOrder: 4,
             itemType: .sight,
             arrivalMode: .train,
-            plannedDurationMin: 35,
             name: "그린델발트역",
             lat: 46.62436,
             lng: 8.03331
         ),
         ItineraryItem(
+            id: CostItemID.grindelwaldLodging,
             tripId: trip.id,
             dayId: day12.id,
             sortOrder: 5,
             itemType: .lodge,
             arrivalMode: .walk,
-            plannedDurationMin: 8,
             name: "그린델발트 숙소",
             lat: 46.6250089,
-            lng: 8.0255361,
-            costAmount: 1388.96,
-            costCurrency: "EUR",
-            costAmountKRW: 2569576,
-            costCategory: .lodging,
-            paymentStatus: .paid
+            lng: 8.0255361
         ),
     ]
 
@@ -1357,7 +1260,6 @@ public enum SampleTravelData {
             sortOrder: 1,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 8,
             name: "그린델발트역",
             lat: 46.62436,
             lng: 8.03331
@@ -1368,7 +1270,6 @@ public enum SampleTravelData {
             sortOrder: 2,
             itemType: .sight,
             arrivalMode: .train,
-            plannedDurationMin: 35,
             name: "인터라켄",
             lat: 46.6908,
             lng: 7.8666
@@ -1379,7 +1280,6 @@ public enum SampleTravelData {
             sortOrder: 3,
             itemType: .sight,
             arrivalMode: .car,
-            plannedDurationMin: 10,
             name: "행글라이딩 착륙(회매트공원)",
             lat: 46.6864092,
             lng: 7.8598769
@@ -1390,7 +1290,6 @@ public enum SampleTravelData {
             sortOrder: 4,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 5,
             name: "하더반 계곡역",
             lat: 46.691014,
             lng: 7.865387
@@ -1401,7 +1300,6 @@ public enum SampleTravelData {
             sortOrder: 5,
             itemType: .sight,
             arrivalMode: .funicular,
-            plannedDurationMin: 10,
             name: "하더쿨룸 정상",
             lat: 46.698286,
             lng: 7.854893
@@ -1412,7 +1310,6 @@ public enum SampleTravelData {
             sortOrder: 6,
             itemType: .sight,
             arrivalMode: .funicular,
-            plannedDurationMin: 10,
             name: "하더반 계곡역 복귀",
             lat: 46.691014,
             lng: 7.865387
@@ -1423,7 +1320,6 @@ public enum SampleTravelData {
             sortOrder: 7,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 5,
             name: "인터라켄 동역 복귀",
             lat: 46.6908,
             lng: 7.8666
@@ -1434,7 +1330,6 @@ public enum SampleTravelData {
             sortOrder: 8,
             itemType: .sight,
             arrivalMode: .train,
-            plannedDurationMin: 35,
             name: "그린델발트역 복귀",
             lat: 46.62436,
             lng: 8.03331
@@ -1445,7 +1340,6 @@ public enum SampleTravelData {
             sortOrder: 9,
             itemType: .lodge,
             arrivalMode: .walk,
-            plannedDurationMin: 8,
             name: "그린델발트 복귀",
             lat: 46.6250089,
             lng: 8.0255361
@@ -1469,26 +1363,20 @@ public enum SampleTravelData {
             sortOrder: 1,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 8,
             name: "First 계곡역",
             lat: 46.625125,
             lng: 8.0417791
         ),
         ItineraryItem(
+            id: CostItemID.first,
             tripId: trip.id,
             dayId: day14.id,
             sortOrder: 2,
             itemType: .sight,
             arrivalMode: .gondola,
-            plannedDurationMin: 25,
             name: "First",
             lat: 46.660556,
-            lng: 8.053611,
-            costAmount: 43.40,
-            costCurrency: "EUR",
-            costAmountKRW: 80290,
-            costCategory: .activity,
-            paymentStatus: .fixed
+            lng: 8.053611
         ),
         ItineraryItem(
             tripId: trip.id,
@@ -1496,7 +1384,6 @@ public enum SampleTravelData {
             sortOrder: 3,
             itemType: .sight,
             arrivalMode: .gondola,
-            plannedDurationMin: 8,
             name: "Schreckfeld (First Flyer)",
             lat: 46.65849,
             lng: 8.065224
@@ -1507,7 +1394,6 @@ public enum SampleTravelData {
             sortOrder: 4,
             itemType: .sight,
             arrivalMode: .gondola,
-            plannedDurationMin: 10,
             name: "Bort (트로티바이크 활동)",
             lat: 46.6353,
             lng: 8.0489
@@ -1518,7 +1404,6 @@ public enum SampleTravelData {
             sortOrder: 5,
             itemType: .sight,
             arrivalMode: .gondola,
-            plannedDurationMin: 10,
             name: "First 계곡역 복귀",
             lat: 46.625125,
             lng: 8.0417791
@@ -1529,7 +1414,6 @@ public enum SampleTravelData {
             sortOrder: 6,
             itemType: .sight,
             arrivalMode: .gondola,
-            plannedDurationMin: 25,
             name: "First 재상승",
             lat: 46.660556,
             lng: 8.053611
@@ -1540,7 +1424,6 @@ public enum SampleTravelData {
             sortOrder: 7,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 40,
             noRoute: true,
             name: "Bachalpsee",
             lat: 46.667762,
@@ -1552,7 +1435,6 @@ public enum SampleTravelData {
             sortOrder: 8,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 40,
             noRoute: true,
             name: "First 복귀",
             lat: 46.660556,
@@ -1564,7 +1446,6 @@ public enum SampleTravelData {
             sortOrder: 9,
             itemType: .sight,
             arrivalMode: .gondola,
-            plannedDurationMin: 8,
             name: "Schreckfeld 하산경유",
             lat: 46.65849,
             lng: 8.065224
@@ -1575,7 +1456,6 @@ public enum SampleTravelData {
             sortOrder: 10,
             itemType: .sight,
             arrivalMode: .gondola,
-            plannedDurationMin: 8,
             name: "Bort 하산경유",
             lat: 46.6353,
             lng: 8.0489
@@ -1586,7 +1466,6 @@ public enum SampleTravelData {
             sortOrder: 11,
             itemType: .sight,
             arrivalMode: .gondola,
-            plannedDurationMin: 9,
             name: "First 계곡역 하산",
             lat: 46.625125,
             lng: 8.0417791
@@ -1597,7 +1476,6 @@ public enum SampleTravelData {
             sortOrder: 12,
             itemType: .lodge,
             arrivalMode: .walk,
-            plannedDurationMin: 8,
             name: "그린델발트 하산",
             lat: 46.6250089,
             lng: 8.0255361
@@ -1621,7 +1499,6 @@ public enum SampleTravelData {
             sortOrder: 1,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 8,
             name: "그린델발트 터미널",
             lat: 46.625508,
             lng: 8.017106
@@ -1632,7 +1509,6 @@ public enum SampleTravelData {
             sortOrder: 2,
             itemType: .sight,
             arrivalMode: .gondola,
-            plannedDurationMin: 15,
             name: "아이거글레처",
             lat: 46.575375,
             lng: 7.975647
@@ -1643,7 +1519,6 @@ public enum SampleTravelData {
             sortOrder: 3,
             itemType: .sight,
             arrivalMode: .cograil,
-            plannedDurationMin: 50,
             name: "융프라우요흐",
             lat: 46.5450199,
             lng: 7.9709441
@@ -1654,7 +1529,6 @@ public enum SampleTravelData {
             sortOrder: 4,
             itemType: .sight,
             arrivalMode: .cograil,
-            plannedDurationMin: 50,
             name: "클라이네샤이덱",
             lat: 46.5861,
             lng: 7.9613
@@ -1665,7 +1539,6 @@ public enum SampleTravelData {
             sortOrder: 5,
             itemType: .sight,
             arrivalMode: .cograil,
-            plannedDurationMin: 15,
             name: "웬겐",
             lat: 46.6058,
             lng: 7.9219
@@ -1676,7 +1549,6 @@ public enum SampleTravelData {
             sortOrder: 6,
             itemType: .sight,
             arrivalMode: .cograil,
-            plannedDurationMin: 15,
             name: "라우터브루넨",
             lat: 46.598434,
             lng: 7.9080887
@@ -1687,7 +1559,6 @@ public enum SampleTravelData {
             sortOrder: 7,
             itemType: .sight,
             arrivalMode: .cograil,
-            plannedDurationMin: 15,
             name: "웬겐 복귀",
             lat: 46.6058,
             lng: 7.9219
@@ -1698,7 +1569,6 @@ public enum SampleTravelData {
             sortOrder: 8,
             itemType: .sight,
             arrivalMode: .gondola,
-            plannedDurationMin: 20,
             name: "멘리헨",
             lat: 46.6103,
             lng: 7.9298
@@ -1709,7 +1579,6 @@ public enum SampleTravelData {
             sortOrder: 9,
             itemType: .lodge,
             arrivalMode: .gondola,
-            plannedDurationMin: 20,
             name: "그린델발트 복귀",
             lat: 46.6250089,
             lng: 8.0255361
@@ -1746,7 +1615,6 @@ public enum SampleTravelData {
             sortOrder: 1,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 8,
             name: "그린델발트역",
             lat: 46.62436,
             lng: 8.03331
@@ -1757,7 +1625,6 @@ public enum SampleTravelData {
             sortOrder: 2,
             itemType: .sight,
             arrivalMode: .train,
-            plannedDurationMin: 35,
             name: "인터라켄 오스트",
             lat: 46.6908,
             lng: 7.8666
@@ -1768,7 +1635,6 @@ public enum SampleTravelData {
             sortOrder: 3,
             itemType: .sight,
             arrivalMode: .train,
-            plannedDurationMin: 120,
             name: "루체른",
             lat: 47.0502,
             lng: 8.3093
@@ -1779,26 +1645,20 @@ public enum SampleTravelData {
             sortOrder: 4,
             itemType: .sight,
             arrivalMode: .train,
-            plannedDurationMin: 45,
             name: "취리히 HB",
             lat: 47.3782,
             lng: 8.5402
         ),
         ItineraryItem(
+            id: CostItemID.zurichLodging,
             tripId: trip.id,
             dayId: day17.id,
             sortOrder: 5,
             itemType: .lodge,
             arrivalMode: .walk,
-            plannedDurationMin: 10,
             name: "취리히 숙소",
             lat: 47.3740681,
-            lng: 8.5298541,
-            costAmount: 286.66,
-            costCurrency: "EUR",
-            costAmountKRW: 530321,
-            costCategory: .lodging,
-            paymentStatus: .paid
+            lng: 8.5298541
         ),
     ]
 
@@ -1819,7 +1679,6 @@ public enum SampleTravelData {
             sortOrder: 1,
             itemType: .sight,
             arrivalMode: .tram,
-            plannedDurationMin: 10,
             name: "취리히 디자인박물관",
             lat: 47.390136,
             lng: 8.51204
@@ -1830,7 +1689,6 @@ public enum SampleTravelData {
             sortOrder: 2,
             itemType: .meal,
             arrivalMode: .tram,
-            plannedDurationMin: 10,
             name: "Zeughauskeller",
             lat: 47.3704208,
             lng: 8.5399742
@@ -1841,26 +1699,20 @@ public enum SampleTravelData {
             sortOrder: 3,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 2,
             name: "린덴호프",
             lat: 47.3721811,
             lng: 8.5413182
         ),
         ItineraryItem(
+            id: CostItemID.fraumunster,
             tripId: trip.id,
             dayId: day18.id,
             sortOrder: 4,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 5,
             name: "프라우뮌스터",
             lat: 47.3697849,
-            lng: 8.5408331,
-            costAmount: 10.00,
-            costCurrency: "EUR",
-            costAmountKRW: 18500,
-            costCategory: .activity,
-            paymentStatus: .fixed
+            lng: 8.5408331
         ),
         ItineraryItem(
             tripId: trip.id,
@@ -1868,7 +1720,6 @@ public enum SampleTravelData {
             sortOrder: 5,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 5,
             name: "호수(뷔르클리플라츠)",
             lat: 47.3667,
             lng: 8.541
@@ -1879,7 +1730,6 @@ public enum SampleTravelData {
             sortOrder: 6,
             itemType: .lodge,
             arrivalMode: .tram,
-            plannedDurationMin: 4,
             name: "숙소 복귀",
             lat: 47.3740681,
             lng: 8.5298541
@@ -1903,7 +1753,6 @@ public enum SampleTravelData {
             sortOrder: 1,
             itemType: .sight,
             arrivalMode: .walk,
-            plannedDurationMin: 10,
             name: "취리히 HB",
             lat: 47.3782,
             lng: 8.5402
@@ -1914,7 +1763,6 @@ public enum SampleTravelData {
             sortOrder: 2,
             itemType: .sight,
             arrivalMode: .train,
-            plannedDurationMin: 10,
             name: "취리히 공항",
             lat: 47.4502,
             lng: 8.5616
@@ -1923,7 +1771,19 @@ public enum SampleTravelData {
 
     public static let items: [ItineraryItem] = day1Items + day2Items + day3Items + day4Items + day5Items + day6Items + day7Items + day8Items + day9Items + day10Items + day11Items + day12Items + day13Items + day14Items + day15Items + day16Items + day17Items + day18Items + day19Items
 
-    public static func makeSeed(ownerId: UUID) -> (trip: Trip, countries: [TripCountry], days: [TripDay], items: [ItineraryItem]) {
+    public static let budgetEntries: [BudgetEntry] = [
+        BudgetEntry(id: CostItemID.vanGoghMuseum, tripId: trip.id, name: "반고흐미술관", costAmount: 50.00, costCurrency: "EUR", costAmountKRW: 84500, costCategory: .entrance, paymentStatus: .paid, linkedItemId: CostItemID.vanGoghMuseum),
+        BudgetEntry(id: CostItemID.parisLodging, tripId: trip.id, name: "파리 숙소", costAmount: 1128.86, costCurrency: "EUR", costAmountKRW: 1907773, costCategory: .lodging, paymentStatus: .paid, linkedItemId: CostItemID.parisLodging),
+        BudgetEntry(id: CostItemID.louvre, tripId: trip.id, name: "루브르 박물관", costAmount: 66.27, costCurrency: "EUR", costAmountKRW: 112000, costCategory: .entrance, paymentStatus: .paid, linkedItemId: CostItemID.louvre),
+        BudgetEntry(id: CostItemID.orsayMuseum, tripId: trip.id, name: "오르세미술관", costAmount: 32.00, costCurrency: "EUR", costAmountKRW: 54080, costCategory: .entrance, paymentStatus: .paid, linkedItemId: CostItemID.orsayMuseum),
+        BudgetEntry(id: CostItemID.disneylandParis, tripId: trip.id, name: "디즈니랜드 파리", costAmount: 121.96, costCurrency: "EUR", costAmountKRW: 206120, costCategory: .activity, paymentStatus: .paid, linkedItemId: CostItemID.disneylandParis),
+        BudgetEntry(id: CostItemID.grindelwaldLodging, tripId: trip.id, name: "그린델발트 숙소", costAmount: 1388.96, costCurrency: "EUR", costAmountKRW: 2569576, costCategory: .lodging, paymentStatus: .paid, linkedItemId: CostItemID.grindelwaldLodging),
+        BudgetEntry(id: CostItemID.first, tripId: trip.id, name: "First", costAmount: 43.40, costCurrency: "EUR", costAmountKRW: 80290, costCategory: .activity, paymentStatus: .fixed, linkedItemId: CostItemID.first),
+        BudgetEntry(id: CostItemID.zurichLodging, tripId: trip.id, name: "취리히 숙소", costAmount: 286.66, costCurrency: "EUR", costAmountKRW: 530321, costCategory: .lodging, paymentStatus: .paid, linkedItemId: CostItemID.zurichLodging),
+        BudgetEntry(id: CostItemID.fraumunster, tripId: trip.id, name: "프라우뮌스터", costAmount: 10.00, costCurrency: "EUR", costAmountKRW: 18500, costCategory: .activity, paymentStatus: .fixed, linkedItemId: CostItemID.fraumunster),
+    ]
+
+    public static func makeSeed(ownerId: UUID) -> (trip: Trip, countries: [TripCountry], days: [TripDay], items: [ItineraryItem], budgetEntries: [BudgetEntry]) {
         let tripID = UUID()
 
         var dayIDMap: [UUID: UUID] = [:]
@@ -1949,14 +1809,27 @@ public enum SampleTravelData {
             return day
         }
 
+        var itemIDMap: [UUID: UUID] = [:]
+        for item in items {
+            itemIDMap[item.id] = UUID()
+        }
+
         let seededItems = items.map { item -> ItineraryItem in
             var item = item
-            item.id = UUID()
+            item.id = itemIDMap[item.id]!
             item.tripId = tripID
             item.dayId = dayIDMap[item.dayId]!
             return item
         }
 
-        return (seededTrip, seededCountries, seededDays, seededItems)
+        let seededBudgetEntries = budgetEntries.map { entry -> BudgetEntry in
+            var entry = entry
+            entry.id = itemIDMap[entry.id]!
+            entry.tripId = tripID
+            entry.linkedItemId = entry.linkedItemId.flatMap { itemIDMap[$0] }
+            return entry
+        }
+
+        return (seededTrip, seededCountries, seededDays, seededItems, seededBudgetEntries)
     }
 }

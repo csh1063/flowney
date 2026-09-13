@@ -1,7 +1,7 @@
 import ProjectDescription
 
 public enum Constants {
-    public static let bundleIdPrefix = "com.baci.waypin"
+    public static let bundleIdPrefix = "com.baci.flowney"
     public static let deploymentTargets: DeploymentTargets = .iOS("17.2")
     public static let destinations: Destinations = .iOS
     /// 실기기 코드사이닝용 Apple Developer 팀 ID — `tuist generate`가 프로젝트를 새로
@@ -11,7 +11,7 @@ public enum Constants {
 
 /// Cross-project target dependencies (each module lives in its own Project.swift,
 /// so references must go through `.project(target:path:)`, not `.target(name:)`).
-public enum WaypinModule {
+public enum FlowneyModule {
     case models
     case apiClient
     case designSystem
@@ -21,6 +21,7 @@ public enum WaypinModule {
     case itinerary
     case addItem
     case budget
+    case memo
     case root
 
     public var targetName: String {
@@ -34,6 +35,7 @@ public enum WaypinModule {
         case .itinerary: return "Itinerary"
         case .addItem: return "AddItem"
         case .budget: return "Budget"
+        case .memo: return "Memo"
         case .root: return "Root"
         }
     }
@@ -49,6 +51,7 @@ public enum WaypinModule {
         case .itinerary: return .relativeToRoot("Projects/Features/Itinerary")
         case .addItem: return .relativeToRoot("Projects/Features/AddItem")
         case .budget: return .relativeToRoot("Projects/Features/Budget")
+        case .memo: return .relativeToRoot("Projects/Features/Memo")
         case .root: return .relativeToRoot("Projects/Features/Root")
         }
     }

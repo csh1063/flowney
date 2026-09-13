@@ -63,7 +63,7 @@ public struct AddItemFlowFeature {
             }
         }
 
-        public init(editingItem item: ItineraryItem, trip: Trip, day: TripDay) {
+        public init(editingItem item: ItineraryItem, trip: Trip, day: TripDay, linkedEntry: BudgetEntry? = nil) {
             selectedTrip = trip
             selectedDay = day
             defaultTripID = trip.id
@@ -72,7 +72,7 @@ public struct AddItemFlowFeature {
             prefillName = ""
             isEditing = true
             step = .form
-            addItemRequest = AddItemFeature.State(editing: item, tripID: trip.id, dayID: day.id)
+            addItemRequest = AddItemFeature.State(editing: item, tripID: trip.id, dayID: day.id, linkedEntry: linkedEntry)
         }
     }
 

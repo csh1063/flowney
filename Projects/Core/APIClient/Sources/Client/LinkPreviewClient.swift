@@ -30,7 +30,7 @@ extension LinkPreviewClient: DependencyKey {
     public static let liveValue: LinkPreviewClient = {
         LinkPreviewClient(
             fetch: { urlString in
-                WaypinLog.debug("link preview 요청 url=\(urlString)", category: .network)
+                FlowneyLog.debug("link preview 요청 url=\(urlString)", category: .network)
                 guard let url = URL(string: urlString) else { throw LinkPreviewError.invalidURL }
 
                 var request = URLRequest(url: url)
@@ -43,12 +43,12 @@ extension LinkPreviewClient: DependencyKey {
                     let html = String(data: data, encoding: .utf8)
                 else {
                     let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
-                    WaypinLog.error("link preview HTTP \(statusCode)", category: .network)
+                    FlowneyLog.error("link preview HTTP \(statusCode)", category: .network)
                     throw LinkPreviewError.requestFailed
                 }
 
                 let preview = LinkPreviewParser.parse(html: html)
-                WaypinLog.debug("link preview 파싱 결과 name=\(String(describing: preview.name))", category: .network)
+                FlowneyLog.debug("link preview 파싱 결과 name=\(String(describing: preview.name))", category: .network)
                 return preview
             }
         )

@@ -18,7 +18,7 @@ struct AddItemFormView: View {
     var body: some View {
         Form {
             Section {
-                WaypinSegmentedControl(
+                FlowneySegmentedControl(
                     selection: Binding(
                         get: { store.mode },
                         set: { store.send(.modeChanged($0)) }
@@ -33,8 +33,8 @@ struct AddItemFormView: View {
                     if store.resolvedLat != nil {
                         if !store.address.isEmpty {
                             Text(store.address)
-                                .font(WaypinFont.caption)
-                                .foregroundStyle(WaypinTheme.textSecondary)
+                                .font(FlowneyFont.caption)
+                                .foregroundStyle(FlowneyTheme.textSecondary)
                         }
                         Button("위치 다시 찾기") { isMapPickerPresented = true }
                     } else {
@@ -54,7 +54,7 @@ struct AddItemFormView: View {
                                 store.linkURLText = ""
                             } label: {
                                 Image(systemName: "xmark.circle.fill")
-                                    .foregroundStyle(WaypinTheme.textSecondary)
+                                    .foregroundStyle(FlowneyTheme.textSecondary)
                             }
                             .buttonStyle(.borderless)
                         }
@@ -67,8 +67,8 @@ struct AddItemFormView: View {
                     }
                     if let linkResolveErrorMessage = store.linkResolveErrorMessage {
                         Text(linkResolveErrorMessage)
-                            .font(WaypinFont.caption)
-                            .foregroundStyle(WaypinTheme.error)
+                            .font(FlowneyFont.caption)
+                            .foregroundStyle(FlowneyTheme.error)
                     }
                 }
             }
@@ -83,8 +83,8 @@ struct AddItemFormView: View {
                         }
                     } else if store.dedupedReuseCandidates.isEmpty {
                         Text("좌표가 있는 장소가 아직 없어요. 링크로 가져온 항목이 있어야 재사용할 수 있어요.")
-                            .font(WaypinFont.caption)
-                            .foregroundStyle(WaypinTheme.textSecondary)
+                            .font(FlowneyFont.caption)
+                            .foregroundStyle(FlowneyTheme.textSecondary)
                     } else {
                         ForEach(store.dedupedReuseCandidates) { candidate in
                             Button {
@@ -94,18 +94,18 @@ struct AddItemFormView: View {
                                     Text(candidate.itemType.icon)
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(candidate.name)
-                                            .foregroundStyle(WaypinTheme.textPrimary)
+                                            .foregroundStyle(FlowneyTheme.textPrimary)
                                         if let address = candidate.address {
                                             Text(address)
-                                                .font(WaypinFont.caption)
-                                                .foregroundStyle(WaypinTheme.textSecondary)
+                                                .font(FlowneyFont.caption)
+                                                .foregroundStyle(FlowneyTheme.textSecondary)
                                                 .lineLimit(1)
                                         }
                                     }
                                     Spacer()
                                     if isSelectedReuseCandidate(candidate) {
                                         Image(systemName: "checkmark.circle.fill")
-                                            .foregroundStyle(WaypinTheme.success)
+                                            .foregroundStyle(FlowneyTheme.success)
                                     }
                                 }
                             }
@@ -159,17 +159,19 @@ struct AddItemFormView: View {
                 if let errorMessage = store.errorMessage {
                     Section {
                         Text(errorMessage)
-                            .foregroundStyle(WaypinTheme.error)
+                            .foregroundStyle(FlowneyTheme.error)
                     }
                 }
             }
         }
         .scrollContentBackground(.hidden)
-        .background(WaypinTheme.background)
+        .background(FlowneyTheme.background)
         .scrollDismissesKeyboard(.immediately)
         .onAppear { tripCurrencies = TripCurrencyStore.read(tripID: store.tripID) }
         .onChange(of: store.savedItem) { _, savedItem in
-            guard let currency = savedItem?.costCurrency, currency.uppercased() != "KRW" else { return }
+            guard savedItem != nil, !store.costAmountText.isEmpty else { return }
+            let currency = store.costCurrency
+            guard currency.uppercased() != "KRW" else { return }
             guard !tripCurrencies.contains(where: { $0.uppercased() == currency.uppercased() }) else { return }
             tripCurrencies.append(currency)
             TripCurrencyStore.save(tripID: store.tripID, currencies: tripCurrencies)
@@ -193,12 +195,17 @@ struct AddItemFormView: View {
                 }
             }
         }
-        .waypinLifecycleLog(category: .addItem)
+        .flowneyLifecycleLog(category: .addItem)
     }
 
     private var mapPickerInitialCoordinate: CLLocationCoordinate2D? {
-        guard let lat = store.resolvedLat, let lng = store.resolvedLng else { return nil }
-        return CLLocationCoordinate2D(latitude: lat, longitude: lng)
+        if let lat = store.resolvedLat, let lng = store.resolvedLng {
+            return CLLocationCoordinate2D(latitude: lat, longitude: lng)
+        }
+        if let lastCamera = LastMapCameraStore.read() {
+            return CLLocationCoordinate2D(latitude: lastCamera.lat, longitude: lastCamera.lng)
+        }
+        return nil
     }
 
     private func isSelectedReuseCandidate(_ candidate: ItineraryItem) -> Bool {

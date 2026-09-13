@@ -1,13 +1,14 @@
-import AddItem
 import ComposableArchitecture
 import DesignSystem
 import Models
 import SwiftUI
+import TripEdit
 
 public struct BudgetView: View {
     @Bindable var store: StoreOf<BudgetFeature>
+    let onTripListRequested: () -> Void
     @State private var addEntryStore: StoreOf<AddBudgetEntryFeature>?
-    @State private var addItemFlowStore: StoreOf<AddItemFlowFeature>?
+    @State private var revealedRowID: AnyHashable?
 
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -16,82 +17,83 @@ public struct BudgetView: View {
         return formatter
     }()
 
-    public init(store: StoreOf<BudgetFeature>) {
+    public init(store: StoreOf<BudgetFeature>, onTripListRequested: @escaping () -> Void) {
         self.store = store
+        self.onTripListRequested = onTripListRequested
     }
 
     public var body: some View {
         List {
             Section("총 합계") {
-                VStack(spacing: WaypinSpacing.md) {
-                    WaypinExpandableRow {
+                VStack(spacing: FlowneySpacing.md) {
+                    FlowneyExpandableRow {
                         summaryRow(title: "전체", amount: store.grandTotalKRW)
                     } content: {
                         currencyBreakdownRows(store.grandCurrencyTotals)
                     }
-                    WaypinExpandableRow {
+                    FlowneyExpandableRow {
                         summaryRow(title: "결제완료", amount: store.paidTotalKRW)
                     } content: {
                         currencyBreakdownRows(store.paidCurrencyTotals)
                     }
-                    WaypinExpandableRow {
+                    FlowneyExpandableRow {
                         summaryRow(title: "미결제", amount: store.unpaidTotalKRW)
                     } content: {
                         currencyBreakdownRows(store.unpaidCurrencyTotals)
                     }
                 }
-                .waypinCard()
-                .waypinCardListRow()
+                .flowneyCard()
+                .flowneyCardListRow()
             }
 
             if !store.groupedByCategory.isEmpty {
                 Section("카테고리별") {
-                    VStack(spacing: WaypinSpacing.md) {
+                    VStack(spacing: FlowneySpacing.md) {
                         ForEach(store.groupedByCategory) { group in
-                            WaypinExpandableRow {
+                            FlowneyExpandableRow {
                                 HStack {
                                     Text(group.category.displayName)
-                                        .font(WaypinFont.body)
+                                        .font(FlowneyFont.body)
                                     Spacer()
                                     Text("\(group.lines.count)건")
-                                        .font(WaypinFont.caption)
-                                        .foregroundStyle(WaypinTheme.textSecondary)
+                                        .font(FlowneyFont.caption)
+                                        .foregroundStyle(FlowneyTheme.textSecondary)
                                     Text(formatted(group.totalKRW))
-                                        .font(WaypinFont.numeric)
+                                        .font(FlowneyFont.numeric)
                                 }
                             } content: {
                                 currencyBreakdownRows(group.currencyTotals)
                             }
                         }
                     }
-                    .waypinCard()
-                    .waypinCardListRow()
+                    .flowneyCard()
+                    .flowneyCardListRow()
                 }
             }
 
             if !store.appliedExchangeRates.isEmpty {
                 Section("적용 환율") {
-                    VStack(spacing: WaypinSpacing.sm) {
+                    VStack(spacing: FlowneySpacing.sm) {
                         ForEach(store.appliedExchangeRates) { rate in
                             HStack {
                                 Text(rate.currency)
-                                    .font(WaypinFont.body)
+                                    .font(FlowneyFont.body)
                                 Spacer()
                                 Text("1 \(rate.currency) ≈ ₩ \(formattedAmount(rate.rate, maximumFractionDigits: 2))")
-                                    .font(WaypinFont.numeric)
-                                    .foregroundStyle(WaypinTheme.textSecondary)
+                                    .font(FlowneyFont.numeric)
+                                    .foregroundStyle(FlowneyTheme.textSecondary)
                             }
                         }
                     }
                     .fixedSize(horizontal: false, vertical: true)
-                    .waypinCard()
-                    .waypinCardListRow()
+                    .flowneyCard()
+                    .flowneyCardListRow()
                 }
-                .listSectionSpacing(.custom(WaypinSpacing.xl))
+                .listSectionSpacing(.custom(FlowneySpacing.xl))
             }
 
             Section {
-                WaypinSegmentedControl(
+                FlowneySegmentedControl(
                     selection: Binding(
                         get: { store.sortMode },
                         set: { store.send(.setSortMode($0)) }
@@ -107,7 +109,7 @@ public struct BudgetView: View {
                     Section(dateSectionTitle(group.date)) {
                         ForEach(group.lines) { line in
                             lineRow(line)
-                                .waypinCardListRow()
+                                .flowneyCardListRow()
                         }
                     }
                 }
@@ -116,7 +118,7 @@ public struct BudgetView: View {
                     Section(group.category?.displayName ?? "미분류") {
                         ForEach(group.lines) { line in
                             lineRow(line)
-                                .waypinCardListRow()
+                                .flowneyCardListRow()
                         }
                     }
                 }
@@ -125,7 +127,7 @@ public struct BudgetView: View {
                     Section("🔜 결제해야 하는 것") {
                         ForEach(store.unpaidLines) { line in
                             lineRow(line)
-                                .waypinCardListRow()
+                                .flowneyCardListRow()
                         }
                     }
                 }
@@ -134,7 +136,7 @@ public struct BudgetView: View {
                     Section("✅ 결제완료") {
                         ForEach(store.paidLines) { line in
                             lineRow(line)
-                                .waypinCardListRow()
+                                .flowneyCardListRow()
                         }
                     }
                 }
@@ -143,17 +145,17 @@ public struct BudgetView: View {
             if !store.linesMissingKRWConversion.isEmpty {
                 Section {
                     Text("원화 환산 금액이 없는 항목 \(store.linesMissingKRWConversion.count)건은 합계에서 빠져있어요.")
-                        .font(WaypinFont.caption)
-                        .foregroundStyle(WaypinTheme.textSecondary)
-                        .waypinCard()
-                        .waypinCardListRow()
+                        .font(FlowneyFont.caption)
+                        .foregroundStyle(FlowneyTheme.textSecondary)
+                        .flowneyCard()
+                        .flowneyCardListRow()
                 }
             }
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .background(WaypinTheme.background)
-        .waypinLeadingTitle(store.trip.name)
+        .background(FlowneyTheme.background)
+        .flowneyLeadingTitle(store.trip.name)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
@@ -166,6 +168,13 @@ public struct BudgetView: View {
                     Image(systemName: "plus")
                 }
             }
+            ToolbarItem(placement: .primaryAction) {
+                TripManagementMenuButton(
+                    trip: store.trip,
+                    onTripListRequested: onTripListRequested,
+                    onTripUpdated: { store.send(.tripUpdated($0)) }
+                )
+            }
         }
         .overlay {
             if store.isLoading {
@@ -173,11 +182,6 @@ public struct BudgetView: View {
             }
         }
         .onAppear { store.send(.onAppear) }
-        .onChange(of: store.addItemFlowRequest) { _, request in
-            guard let request else { return }
-            addItemFlowStore = Store(initialState: request) { AddItemFlowFeature() }
-            store.send(.addItemFlowRequestConsumed)
-        }
         .sheet(isPresented: Binding(
             get: { addEntryStore != nil },
             set: { if !$0 { addEntryStore = nil } }
@@ -192,35 +196,16 @@ public struct BudgetView: View {
                     }
             }
         }
-        .sheet(
-            isPresented: Binding(
-                get: { addItemFlowStore != nil },
-                set: { isPresented in
-                    if !isPresented { addItemFlowStore = nil }
-                }
-            )
-        ) {
-            if let addItemFlowStore {
-                AddItemFlowView(
-                    store: addItemFlowStore,
-                    onItemAdded: { item in
-                        store.send(.itemUpdated(item))
-                        self.addItemFlowStore = nil
-                    },
-                    onCancelled: { self.addItemFlowStore = nil }
-                )
-            }
-        }
-        .waypinLifecycleLog(category: .budget)
+        .flowneyLifecycleLog(category: .budget)
     }
 
     private func summaryRow(title: String, amount: Decimal) -> some View {
         HStack {
             Text(title)
-                .font(WaypinFont.body)
+                .font(FlowneyFont.body)
             Spacer()
             Text(formatted(amount))
-                .font(WaypinFont.numeric)
+                .font(FlowneyFont.numeric)
         }
     }
 
@@ -228,83 +213,74 @@ public struct BudgetView: View {
     private func currencyBreakdownRows(_ totals: [BudgetFeature.State.CurrencyTotal]) -> some View {
         if totals.isEmpty {
             Text("통화별 내역이 없어요")
-                .font(WaypinFont.caption)
-                .foregroundStyle(WaypinTheme.textSecondary)
+                .font(FlowneyFont.caption)
+                .foregroundStyle(FlowneyTheme.textSecondary)
         } else {
             ForEach(totals) { total in
                 HStack {
                     Spacer()
                     Text(amountText(total.total, currency: total.currency))
-                        .font(WaypinFont.numeric)
+                        .font(FlowneyFont.numeric)
                 }
             }
         }
     }
 
     @ViewBuilder
-    private func lineRow(_ line: BudgetFeature.State.BudgetLine) -> some View {
-        switch line {
-        case let .item(item):
-            Button {
-                store.send(.editItemTapped(item))
-            } label: {
-                lineRowContent(line)
-                    .waypinCard()
-            }
-            .buttonStyle(.plain)
-
-        case let .entry(entry):
-            SwipeToDeleteCard(
-                onDelete: { store.send(.deleteEntryButtonTapped(entry.id)) },
-                onTap: {
-                    addEntryStore = Store(
-                        initialState: AddBudgetEntryFeature.State(
-                            editing: entry,
-                            items: store.items,
-                            days: store.days
-                        )
-                    ) {
-                        AddBudgetEntryFeature()
-                    }
+    private func lineRow(_ entry: BudgetEntry) -> some View {
+        SwipeToDeleteCard(
+            id: entry.id,
+            revealedID: $revealedRowID,
+            onDelete: { store.send(.deleteEntryButtonTapped(entry.id)) },
+            onTap: {
+                addEntryStore = Store(
+                    initialState: AddBudgetEntryFeature.State(
+                        editing: entry,
+                        items: store.items,
+                        days: store.days
+                    )
+                ) {
+                    AddBudgetEntryFeature()
                 }
-            ) {
-                lineRowContent(line)
-                    .waypinCard(corners: .leadingOnly)
             }
+        ) {
+            lineRowContent(entry)
+                .padding(FlowneySpacing.md)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
-    private func lineRowContent(_ line: BudgetFeature.State.BudgetLine) -> some View {
+    private func lineRowContent(_ entry: BudgetEntry) -> some View {
         HStack {
-            VStack(alignment: .leading, spacing: WaypinSpacing.xs) {
-                HStack(spacing: WaypinSpacing.xs) {
-                    if case .entry = line {
+            VStack(alignment: .leading, spacing: FlowneySpacing.xs) {
+                HStack(spacing: FlowneySpacing.xs) {
+                    if entry.linkedItemId == nil {
                         Image(systemName: "note.text")
                             .font(.caption)
-                            .foregroundStyle(WaypinTheme.textSecondary)
+                            .foregroundStyle(FlowneyTheme.textSecondary)
                     }
-                    Text(line.name)
-                        .font(WaypinFont.bodyEmphasis)
-                    if let date = store.state.date(for: line) {
+                    Text(entry.name)
+                        .font(FlowneyFont.bodyEmphasis)
+                    if let date = store.state.date(for: entry) {
                         Text(Self.dateFormatter.string(from: date))
-                            .font(WaypinFont.caption)
-                            .foregroundStyle(WaypinTheme.textSecondary)
+                            .font(FlowneyFont.caption)
+                            .foregroundStyle(FlowneyTheme.textSecondary)
                     }
                 }
-                if let status = line.paymentStatus {
+                if let status = entry.paymentStatus {
                     StatusPill(text: status.displayName, color: status.pillColor)
                 }
             }
             Spacer()
-            if let amount = line.costAmount {
-                let isKRW = (line.costCurrency ?? "").uppercased() == "KRW"
-                VStack(alignment: .trailing, spacing: WaypinSpacing.xs) {
-                    Text(amountText(amount, currency: line.costCurrency ?? ""))
-                        .font(WaypinFont.numeric)
-                    if !isKRW, let krw = line.costAmountKRW {
+            if let amount = entry.costAmount {
+                let isKRW = (entry.costCurrency ?? "").uppercased() == "KRW"
+                VStack(alignment: .trailing, spacing: FlowneySpacing.xs) {
+                    Text(amountText(amount, currency: entry.costCurrency ?? ""))
+                        .font(FlowneyFont.numeric)
+                    if !isKRW, let krw = entry.costAmountKRW {
                         Text(formatted(krw))
-                            .font(WaypinFont.caption)
-                            .foregroundStyle(WaypinTheme.textSecondary)
+                            .font(FlowneyFont.caption)
+                            .foregroundStyle(FlowneyTheme.textSecondary)
                     }
                 }
             }

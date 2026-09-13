@@ -1,14 +1,14 @@
 import SwiftUI
 
 extension View {
-    public func waypinLeadingTitle(_ title: String) -> some View {
+    public func flowneyLeadingTitle(_ title: String) -> some View {
         navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text(title)
-                        .font(WaypinFont.sectionHeader)
-                        .foregroundStyle(WaypinTheme.textPrimary)
+                        .font(FlowneyFont.sectionHeader)
+                        .foregroundStyle(FlowneyTheme.textPrimary)
                         .lineLimit(1)
                         .truncationMode(.tail)
                         .frame(maxWidth: .infinity, alignment: .leading)

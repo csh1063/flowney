@@ -1,11 +1,11 @@
 import ProjectDescription
 import ProjectDescriptionHelpers
 
-let project = waypinModuleProject(
+let project = flowneyModuleProject(
     moduleName: "APIClient",
     bundleIdSuffix: "core.apiclient",
     dependencies: [
-        WaypinModule.models.dependency,
+        FlowneyModule.models.dependency,
         .external(name: "ComposableArchitecture"),
         .external(name: "Supabase"),
     ]

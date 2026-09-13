@@ -34,7 +34,7 @@ extension PlaceResolverAPIClient: DependencyKey {
     public static let liveValue: PlaceResolverAPIClient = {
         PlaceResolverAPIClient(
             resolve: { urlString in
-                WaypinLog.debug("place resolve 요청 url=\(urlString)", category: .network)
+                FlowneyLog.debug("place resolve 요청 url=\(urlString)", category: .network)
                 guard let endpoint = URL(string: "https://mock-serverless.vercel.app/api/travel/place/resolve") else {
                     throw PlaceResolverError.invalidEndpoint
                 }
@@ -55,16 +55,16 @@ extension PlaceResolverAPIClient: DependencyKey {
                 else {
                     let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
                     let body = String(data: data, encoding: .utf8) ?? "(no body)"
-                    WaypinLog.error("place resolve HTTP \(statusCode): \(body)", category: .network)
+                    FlowneyLog.error("place resolve HTTP \(statusCode): \(body)", category: .network)
                     throw PlaceResolverError.requestFailed
                 }
 
                 let decoded = try JSONDecoder().decode(ResolveResponse.self, from: data)
                 guard decoded.result, let place = decoded.place else {
-                    WaypinLog.warning("place resolve unresolvable url=\(urlString)", category: .network)
+                    FlowneyLog.warning("place resolve unresolvable url=\(urlString)", category: .network)
                     throw PlaceResolverError.unresolvableLink
                 }
-                WaypinLog.debug("place resolve 성공 name=\(place.name)", category: .network)
+                FlowneyLog.debug("place resolve 성공 name=\(place.name)", category: .network)
                 return place
             }
         )

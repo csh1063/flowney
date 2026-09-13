@@ -33,7 +33,7 @@ extension WeatherAPIClient: DependencyKey {
                         let missing = forecastDates.filter { result[dateFormatter.string(from: $0)] == nil }
                         historicalDates.append(contentsOf: missing)
                     } else {
-                        WaypinLog.warning("forecast 요청 실패, historical fallback으로 대체 dates=\(forecastDates.count)", category: .weather)
+                        FlowneyLog.warning("forecast 요청 실패, historical fallback으로 대체 dates=\(forecastDates.count)", category: .weather)
                         historicalDates.append(contentsOf: forecastDates)
                     }
                 }
@@ -67,7 +67,7 @@ extension WeatherAPIClient: DependencyKey {
         let (data, response) = try await URLSession.shared.data(from: url)
         guard let httpResponse = response as? HTTPURLResponse, (200 ..< 300).contains(httpResponse.statusCode) else {
             let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
-            WaypinLog.error("fetchForecastRange HTTP \(statusCode)", category: .network)
+            FlowneyLog.error("fetchForecastRange HTTP \(statusCode)", category: .network)
             throw WeatherAPIError.requestFailed
         }
 

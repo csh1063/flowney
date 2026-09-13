@@ -55,7 +55,7 @@ extension RouteAPIClient: DependencyKey {
     public static let liveValue: RouteAPIClient = {
         RouteAPIClient(
             fetchDayRoutes: { items in
-                WaypinLog.debug("fetchDayRoutes 요청 items=\(items.count)", category: .network)
+                FlowneyLog.debug("fetchDayRoutes 요청 items=\(items.count)", category: .network)
                 guard let endpoint = URL(string: "https://mock-serverless.vercel.app/api/travel/route/day") else {
                     throw RouteAPIError.invalidEndpoint
                 }
@@ -76,16 +76,16 @@ extension RouteAPIClient: DependencyKey {
                 else {
                     let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
                     let body = String(data: data, encoding: .utf8) ?? "(no body)"
-                    WaypinLog.error("fetchDayRoutes HTTP \(statusCode): \(body)", category: .network)
+                    FlowneyLog.error("fetchDayRoutes HTTP \(statusCode): \(body)", category: .network)
                     throw RouteAPIError.requestFailed(statusCode: statusCode, body: body)
                 }
 
                 let decoded = try JSONDecoder().decode(RouteDayResponse.self, from: data)
-                WaypinLog.debug("fetchDayRoutes 응답 legs=\(decoded.legs.count)", category: .network)
+                FlowneyLog.debug("fetchDayRoutes 응답 legs=\(decoded.legs.count)", category: .network)
                 return decoded.legs
             },
             refreshTripRoutes: { tripId, dayId, scope in
-                WaypinLog.debug("refreshTripRoutes 요청 trip=\(tripId) day=\(String(describing: dayId)) scope=\(scope.rawValue)", category: .network)
+                FlowneyLog.debug("refreshTripRoutes 요청 trip=\(tripId) day=\(String(describing: dayId)) scope=\(scope.rawValue)", category: .network)
                 guard let endpoint = URL(string: "https://mock-serverless.vercel.app/api/travel/trip/route/refresh") else {
                     throw RouteAPIError.invalidEndpoint
                 }
@@ -112,12 +112,12 @@ extension RouteAPIClient: DependencyKey {
                 else {
                     let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
                     let body = String(data: data, encoding: .utf8) ?? "(no body)"
-                    WaypinLog.error("refreshTripRoutes HTTP \(statusCode): \(body)", category: .network)
+                    FlowneyLog.error("refreshTripRoutes HTTP \(statusCode): \(body)", category: .network)
                     throw RouteAPIError.requestFailed(statusCode: statusCode, body: body)
                 }
 
                 let decoded = try JSONDecoder().decode(RouteRefreshResponse.self, from: data)
-                WaypinLog.debug("refreshTripRoutes 응답 days=\(decoded.days.count)", category: .network)
+                FlowneyLog.debug("refreshTripRoutes 응답 days=\(decoded.days.count)", category: .network)
                 return decoded.days
             }
         )

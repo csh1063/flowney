@@ -15,7 +15,7 @@ struct DaySelectionCalendarView: View {
                 ContentUnavailableView("날짜 정보를 찾을 수 없어요", systemImage: "calendar")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                WaypinTripDayCalendarView(
+                FlowneyTripDayCalendarView(
                     days: Array(store.days),
                     selectedDayID: store.selectedDay?.id
                 ) { day in
@@ -24,6 +24,6 @@ struct DaySelectionCalendarView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(WaypinTheme.background)
+        .background(FlowneyTheme.background)
     }
 }

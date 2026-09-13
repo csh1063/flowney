@@ -21,12 +21,12 @@ struct TripSelectionStepView: View {
                         }
                     } label: {
                         Label("여행 추가하기", systemImage: "plus.circle.fill")
-                            .font(WaypinFont.bodyEmphasis)
-                            .foregroundStyle(WaypinTheme.accent)
-                            .waypinCard()
+                            .font(FlowneyFont.bodyEmphasis)
+                            .foregroundStyle(FlowneyTheme.accent)
+                            .flowneyCard()
                     }
                     .buttonStyle(.plain)
-                    .waypinCardListRow()
+                    .flowneyCardListRow()
 
                     ForEach(store.trips) { trip in
                         Button {
@@ -36,26 +36,26 @@ struct TripSelectionStepView: View {
                                 .overlay(alignment: .topTrailing) {
                                     if trip.id == store.defaultTripID {
                                         Text("지금 보는 중")
-                                            .font(WaypinFont.captionEmphasis)
-                                            .foregroundStyle(WaypinTheme.accentLabel)
+                                            .font(FlowneyFont.captionEmphasis)
+                                            .foregroundStyle(FlowneyTheme.accentLabel)
                                             .padding(.horizontal, 6)
                                             .padding(.vertical, 2)
-                                            .background(WaypinTheme.accent, in: Capsule())
-                                            .padding(WaypinSpacing.sm)
+                                            .background(FlowneyTheme.accent, in: Capsule())
+                                            .padding(FlowneySpacing.sm)
                                     }
                                 }
                         }
                         .buttonStyle(.plain)
-                        .waypinCardListRow()
+                        .flowneyCardListRow()
                     }
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
-                .contentMargins(.top, WaypinSpacing.md, for: .scrollContent)
+                .contentMargins(.top, FlowneySpacing.md, for: .scrollContent)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(WaypinTheme.background)
+        .background(FlowneyTheme.background)
         .sheet(
             isPresented: Binding(
                 get: { editStore != nil },

@@ -2,7 +2,7 @@ import ProjectDescription
 
 /// Creates a Project.swift for an internal static-framework module (Core or Feature).
 /// `bundleIdSuffix` example: "core.models", "features.auth".
-public func waypinModuleProject(
+public func flowneyModuleProject(
     moduleName: String,
     bundleIdSuffix: String,
     dependencies: [TargetDependency] = [],

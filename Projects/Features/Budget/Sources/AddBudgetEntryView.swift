@@ -33,12 +33,12 @@ public struct AddBudgetEntryView: View {
                 Section("날짜 / 일정") {
                     if let linkedItem = store.linkedItem {
                         HStack {
-                            VStack(alignment: .leading, spacing: WaypinSpacing.xs) {
+                            VStack(alignment: .leading, spacing: FlowneySpacing.xs) {
                                 Text("연결된 일정")
-                                    .font(WaypinFont.caption)
-                                    .foregroundStyle(WaypinTheme.textSecondary)
+                                    .font(FlowneyFont.caption)
+                                    .foregroundStyle(FlowneyTheme.textSecondary)
                                 Text(linkedItem.name)
-                                    .font(WaypinFont.bodyEmphasis)
+                                    .font(FlowneyFont.bodyEmphasis)
                             }
                             Spacer()
                             Button("취소") { store.send(.linkedItemCleared) }
@@ -46,18 +46,18 @@ public struct AddBudgetEntryView: View {
                     } else if let date = store.date {
                         HStack {
                             Text(Self.dateFormatter.string(from: date))
-                                .font(WaypinFont.bodyEmphasis)
+                                .font(FlowneyFont.bodyEmphasis)
                             Spacer()
                             Button("취소") { store.send(.dateCleared) }
                         }
                     } else {
                         DisclosureGroup("날짜 선택", isExpanded: $isCalendarExpanded) {
-                            WaypinTripDayCalendarView(days: Array(store.days), selectedDayID: nil) { day in
+                            FlowneyTripDayCalendarView(days: Array(store.days), selectedDayID: nil) { day in
                                 store.send(.dateSelected(day.dayDate))
                                 isCalendarExpanded = false
                             }
                             .frame(height: 320)
-                            .padding(.top, WaypinSpacing.sm)
+                            .padding(.top, FlowneySpacing.sm)
                         }
                         Button("일정에서 선택") { isItemPickerPresented = true }
                     }
@@ -83,12 +83,12 @@ public struct AddBudgetEntryView: View {
                 if let errorMessage = store.errorMessage {
                     Section {
                         Text(errorMessage)
-                            .foregroundStyle(WaypinTheme.error)
+                            .foregroundStyle(FlowneyTheme.error)
                     }
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(WaypinTheme.background)
+            .background(FlowneyTheme.background)
             .navigationTitle(store.editingOriginalEntry == nil ? "예산 추가" : "예산 수정")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

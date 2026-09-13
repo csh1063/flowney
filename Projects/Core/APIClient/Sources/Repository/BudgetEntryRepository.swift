@@ -8,6 +8,7 @@ public struct BudgetEntryRepository: Sendable {
     public var fetchAllEntries: @Sendable (_ tripId: Trip.ID) async throws -> [BudgetEntry]
     public var createEntry: @Sendable (_ entry: BudgetEntry) async throws -> BudgetEntry
     public var updateEntry: @Sendable (_ entry: BudgetEntry) async throws -> BudgetEntry
+    public var upsertEntry: @Sendable (_ entry: BudgetEntry) async throws -> BudgetEntry
     public var deleteEntry: @Sendable (_ id: BudgetEntry.ID) async throws -> Void
 }
 
@@ -39,6 +40,15 @@ extension BudgetEntryRepository: DependencyKey {
                     .from("budget_entries")
                     .update(entry)
                     .eq("id", value: entry.id)
+                    .select()
+                    .single()
+                    .execute()
+                    .value
+            },
+            upsertEntry: { entry in
+                try await client
+                    .from("budget_entries")
+                    .upsert(entry)
                     .select()
                     .single()
                     .execute()

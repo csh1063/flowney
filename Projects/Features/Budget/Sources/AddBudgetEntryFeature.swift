@@ -158,7 +158,7 @@ public struct AddBudgetEntryFeature {
                     isEditing = false
                 }
 
-                WaypinLog.debug("예산 항목 저장 시작 isEditing=\(isEditing) name=\(entry.name)", category: .budget)
+                FlowneyLog.debug("예산 항목 저장 시작 isEditing=\(isEditing) name=\(entry.name)", category: .budget)
                 return .run { [entry, isEditing] send in
                     do {
                         let saved = isEditing
@@ -166,7 +166,7 @@ public struct AddBudgetEntryFeature {
                             : try await budgetEntryRepository.createEntry(entry)
                         await send(.saveResponse(.success(saved)))
                     } catch {
-                        WaypinLog.error("예산 항목 저장 실패: \(error)", category: .budget)
+                        FlowneyLog.error("예산 항목 저장 실패: \(error)", category: .budget)
                         await send(.saveResponse(.failure(error)))
                     }
                 }

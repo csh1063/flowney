@@ -14,7 +14,7 @@ struct AddItemContextHeaderView: View {
             Divider()
             row(title: "날짜", value: dayText, placeholder: "날짜를 선택하세요", isEnabled: isDayEnabled, action: onDayTapped)
         }
-        .background(WaypinTheme.surface)
+        .background(FlowneyTheme.surface)
         Divider()
     }
 
@@ -22,20 +22,20 @@ struct AddItemContextHeaderView: View {
         Button(action: action) {
             HStack {
                 Text(title)
-                    .font(WaypinFont.caption)
-                    .foregroundStyle(WaypinTheme.textSecondary)
+                    .font(FlowneyFont.caption)
+                    .foregroundStyle(FlowneyTheme.textSecondary)
                     .frame(width: 44, alignment: .leading)
                 Text(value ?? placeholder)
-                    .font(WaypinFont.bodyEmphasis)
-                    .foregroundStyle(value != nil ? WaypinTheme.textPrimary : WaypinTheme.textSecondary)
+                    .font(FlowneyFont.bodyEmphasis)
+                    .foregroundStyle(value != nil ? FlowneyTheme.textPrimary : FlowneyTheme.textSecondary)
                     .lineLimit(1)
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.caption)
-                    .foregroundStyle(WaypinTheme.textSecondary)
+                    .foregroundStyle(FlowneyTheme.textSecondary)
             }
-            .padding(.horizontal, WaypinSpacing.lg)
-            .padding(.vertical, WaypinSpacing.md)
+            .padding(.horizontal, FlowneySpacing.lg)
+            .padding(.vertical, FlowneySpacing.md)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

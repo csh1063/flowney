@@ -30,7 +30,7 @@ public struct AddItemFlowView: View {
                     onTripTapped: { store.send(.headerTripTapped) },
                     onDayTapped: { store.send(.headerDayTapped) }
                 )
-                .padding(.top, WaypinSpacing.sm)
+                .padding(.top, FlowneySpacing.sm)
 
                 Group {
                     switch store.step {

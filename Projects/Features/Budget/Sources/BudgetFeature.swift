@@ -1,4 +1,3 @@
-import AddItem
 import APIClient
 import ComposableArchitecture
 import Foundation
@@ -15,7 +14,6 @@ public struct BudgetFeature {
         public var isLoading = false
         public var errorMessage: String?
         public var sortMode: SortMode = .byDate
-        public var addItemFlowRequest: AddItemFlowFeature.State?
 
         public init(trip: Trip) {
             self.trip = trip
@@ -35,60 +33,6 @@ public struct BudgetFeature {
             }
         }
 
-        public enum BudgetLine: Identifiable, Equatable {
-            case item(ItineraryItem)
-            case entry(BudgetEntry)
-
-            public var id: AnyHashable {
-                switch self {
-                case let .item(item): item.id
-                case let .entry(entry): entry.id
-                }
-            }
-
-            public var name: String {
-                switch self {
-                case let .item(item): item.name
-                case let .entry(entry): entry.name
-                }
-            }
-
-            public var costAmount: Decimal? {
-                switch self {
-                case let .item(item): item.costAmount
-                case let .entry(entry): entry.costAmount
-                }
-            }
-
-            public var costCurrency: String? {
-                switch self {
-                case let .item(item): item.costCurrency
-                case let .entry(entry): entry.costCurrency
-                }
-            }
-
-            public var costAmountKRW: Decimal? {
-                switch self {
-                case let .item(item): item.costAmountKRW
-                case let .entry(entry): entry.costAmountKRW
-                }
-            }
-
-            public var costCategory: CostCategory? {
-                switch self {
-                case let .item(item): item.costCategory
-                case let .entry(entry): entry.costCategory
-                }
-            }
-
-            public var paymentStatus: PaymentStatus? {
-                switch self {
-                case let .item(item): item.paymentStatus
-                case let .entry(entry): entry.paymentStatus
-                }
-            }
-        }
-
         public struct CurrencyTotal: Identifiable, Equatable {
             public var currency: String
             public var total: Decimal
@@ -97,32 +41,25 @@ public struct BudgetFeature {
 
         public struct CategoryGroup: Identifiable, Equatable {
             public var category: CostCategory
-            public var lines: [BudgetLine]
+            public var lines: [BudgetEntry]
             public var totalKRW: Decimal
             public var currencyTotals: [CurrencyTotal]
             public var id: CostCategory { category }
         }
 
-        public var lines: [BudgetLine] {
-            items.map(BudgetLine.item) + entries.map(BudgetLine.entry)
-        }
+        public var lines: [BudgetEntry] { Array(entries) }
 
-        public func date(for line: BudgetLine) -> Date? {
-            switch line {
-            case let .item(item):
-                return days[id: item.dayId]?.dayDate
-            case let .entry(entry):
-                if let date = entry.date { return date }
-                if let linkedId = entry.linkedItemId, let linkedItem = items[id: linkedId] {
-                    return days[id: linkedItem.dayId]?.dayDate
-                }
-                return nil
+        public func date(for entry: BudgetEntry) -> Date? {
+            if let date = entry.date { return date }
+            if let linkedId = entry.linkedItemId, let linkedItem = items[id: linkedId] {
+                return days[id: linkedItem.dayId]?.dayDate
             }
+            return nil
         }
 
         public struct DateGroup: Identifiable, Equatable {
             public var date: Date?
-            public var lines: [BudgetLine]
+            public var lines: [BudgetEntry]
             public var id: Date? { date }
         }
 
@@ -144,7 +81,7 @@ public struct BudgetFeature {
 
         public struct CategoryLineGroup: Identifiable, Equatable {
             public var category: CostCategory?
-            public var lines: [BudgetLine]
+            public var lines: [BudgetEntry]
             public var id: String { category?.rawValue ?? "uncategorized" }
         }
 
@@ -164,7 +101,7 @@ public struct BudgetFeature {
             return groups
         }
 
-        private func currencyTotals(for lines: [BudgetLine]) -> [CurrencyTotal] {
+        private func currencyTotals(for lines: [BudgetEntry]) -> [CurrencyTotal] {
             let grouped = Dictionary(
                 grouping: lines.filter { $0.costCurrency != nil && $0.costAmount != nil },
                 by: { $0.costCurrency! }
@@ -190,11 +127,11 @@ public struct BudgetFeature {
                 .sorted { $0.totalKRW > $1.totalKRW }
         }
 
-        public var paidLines: [BudgetLine] {
+        public var paidLines: [BudgetEntry] {
             lines.filter { $0.paymentStatus == .paid }
         }
 
-        public var unpaidLines: [BudgetLine] {
+        public var unpaidLines: [BudgetEntry] {
             lines.filter { $0.paymentStatus == .fixed || $0.paymentStatus == .pending }
         }
 
@@ -214,7 +151,7 @@ public struct BudgetFeature {
         public var paidCurrencyTotals: [CurrencyTotal] { currencyTotals(for: paidLines) }
         public var unpaidCurrencyTotals: [CurrencyTotal] { currencyTotals(for: unpaidLines) }
 
-        public var linesMissingKRWConversion: [BudgetLine] {
+        public var linesMissingKRWConversion: [BudgetEntry] {
             lines.filter { $0.costAmount != nil && $0.costAmountKRW == nil }
         }
 
@@ -253,9 +190,7 @@ public struct BudgetFeature {
         case deleteEntryButtonTapped(BudgetEntry.ID)
         case deleteEntryResponse(Result<BudgetEntry.ID, any Error>)
         case setSortMode(State.SortMode)
-        case editItemTapped(ItineraryItem)
-        case addItemFlowRequestConsumed
-        case itemUpdated(ItineraryItem)
+        case tripUpdated(Trip)
     }
 
     @Dependency(\.itineraryRepository) var itineraryRepository
@@ -268,7 +203,7 @@ public struct BudgetFeature {
         Reduce { state, action in
             switch action {
             case .onAppear:
-                WaypinLog.debug("예산 화면 onAppear trip=\(state.trip.id)", category: .budget)
+                FlowneyLog.debug("예산 화면 onAppear trip=\(state.trip.id)", category: .budget)
                 state.isLoading = true
                 state.errorMessage = nil
                 let tripID = state.trip.id
@@ -302,7 +237,6 @@ public struct BudgetFeature {
             case let .itemsResponse(.success(items)):
                 state.isLoading = false
                 state.items = IdentifiedArrayOf(uniqueElements: items)
-                syncTripCurrencies(tripID: state.trip.id, usedCurrencies: items.compactMap(\.costCurrency))
                 return .none
 
             case let .itemsResponse(.failure(error)):
@@ -336,10 +270,10 @@ public struct BudgetFeature {
                 return .run { send in
                     do {
                         try await budgetEntryRepository.deleteEntry(id)
-                        WaypinLog.debug("예산 항목 삭제 성공 id=\(id)", category: .budget)
+                        FlowneyLog.debug("예산 항목 삭제 성공 id=\(id)", category: .budget)
                         await send(.deleteEntryResponse(.success(id)))
                     } catch {
-                        WaypinLog.error("예산 항목 삭제 실패 id=\(id): \(error)", category: .budget)
+                        FlowneyLog.error("예산 항목 삭제 실패 id=\(id): \(error)", category: .budget)
                         await send(.deleteEntryResponse(.failure(error)))
                     }
                 }
@@ -355,20 +289,8 @@ public struct BudgetFeature {
                 state.sortMode = mode
                 return .none
 
-            case let .editItemTapped(item):
-                guard let day = state.days[id: item.dayId] else { return .none }
-                state.addItemFlowRequest = AddItemFlowFeature.State(editingItem: item, trip: state.trip, day: day)
-                return .none
-
-            case .addItemFlowRequestConsumed:
-                state.addItemFlowRequest = nil
-                return .none
-
-            case let .itemUpdated(item):
-                state.items[id: item.id] = item
-                if let currency = item.costCurrency {
-                    syncTripCurrencies(tripID: state.trip.id, usedCurrencies: [currency])
-                }
+            case let .tripUpdated(trip):
+                state.trip = trip
                 return .none
             }
         }

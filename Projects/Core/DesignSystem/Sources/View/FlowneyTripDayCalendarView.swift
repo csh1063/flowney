@@ -1,7 +1,7 @@
 import Models
 import SwiftUI
 
-public struct WaypinTripDayCalendarView: View {
+public struct FlowneyTripDayCalendarView: View {
     private static let calendar = Calendar(identifier: .gregorian)
     private static let weekdayHeaderLabels = ["일", "월", "화", "수", "목", "금", "토"]
 
@@ -29,7 +29,7 @@ public struct WaypinTripDayCalendarView: View {
 
     public var body: some View {
         ScrollView {
-            VStack(spacing: WaypinSpacing.md) {
+            VStack(spacing: FlowneySpacing.md) {
                 weekdayHeaderRow
 
                 ForEach(Array(weeks.enumerated()), id: \.offset) { _, week in
@@ -39,16 +39,16 @@ public struct WaypinTripDayCalendarView: View {
                     weekRow(week)
                 }
             }
-            .padding(WaypinSpacing.lg)
+            .padding(FlowneySpacing.lg)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(
-            RoundedRectangle(cornerRadius: WaypinRadius.lg, style: .continuous)
-                .fill(WaypinTheme.surface)
+            RoundedRectangle(cornerRadius: FlowneyRadius.lg, style: .continuous)
+                .fill(FlowneyTheme.surface)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: WaypinRadius.lg, style: .continuous)
-                .stroke(WaypinTheme.divider, lineWidth: 1)
+            RoundedRectangle(cornerRadius: FlowneyRadius.lg, style: .continuous)
+                .stroke(FlowneyTheme.divider, lineWidth: 1)
         )
     }
 
@@ -56,8 +56,8 @@ public struct WaypinTripDayCalendarView: View {
         HStack(spacing: 0) {
             ForEach(Self.weekdayHeaderLabels, id: \.self) { label in
                 Text(label)
-                    .font(WaypinFont.caption.weight(.semibold))
-                    .foregroundStyle(WaypinTheme.textSecondary)
+                    .font(FlowneyFont.caption.weight(.semibold))
+                    .foregroundStyle(FlowneyTheme.textSecondary)
                     .frame(maxWidth: .infinity)
             }
         }
@@ -67,12 +67,12 @@ public struct WaypinTripDayCalendarView: View {
         HStack(spacing: 0) {
             ForEach(week) { cell in
                 Text(monthLabel(for: cell) ?? "")
-                    .font(WaypinFont.captionEmphasis)
-                    .foregroundStyle(WaypinTheme.accent)
+                    .font(FlowneyFont.captionEmphasis)
+                    .foregroundStyle(FlowneyTheme.accent)
                     .frame(maxWidth: .infinity)
             }
         }
-        .padding(.top, WaypinSpacing.xs)
+        .padding(.top, FlowneySpacing.xs)
     }
 
     private func weekRow(_ week: [Cell]) -> some View {
@@ -132,13 +132,13 @@ public struct WaypinTripDayCalendarView: View {
                 onSelectDay(day)
             } label: {
                 Text("\(Self.calendar.component(.day, from: day.dayDate))")
-                    .font(WaypinFont.bodyEmphasis)
-                    .foregroundStyle(isSelected ? WaypinTheme.fillLabel : WaypinTheme.textPrimary)
+                    .font(FlowneyFont.bodyEmphasis)
+                    .foregroundStyle(isSelected ? FlowneyTheme.fillLabel : FlowneyTheme.textPrimary)
                     .frame(width: 36, height: 36)
-                    .background(isSelected ? WaypinTheme.fill : Color.clear, in: Circle())
+                    .background(isSelected ? FlowneyTheme.fill : Color.clear, in: Circle())
                     .overlay(
                         Circle()
-                            .stroke(WaypinTheme.accent, lineWidth: isToday && !isSelected ? 1.5 : 0)
+                            .stroke(FlowneyTheme.accent, lineWidth: isToday && !isSelected ? 1.5 : 0)
                     )
             }
             .buttonStyle(.plain)

@@ -1,4 +1,4 @@
-# Waypin
+# Flowney
 
 여행 중 데이터가 거의 없어도 동작하는 걸 목표로 만든 개인용 여행 일정/경로 앱.
 날짜별 일정을 지도 위에서 관리하고, 장소 간 실제 이동 경로(도보/대중교통/자동차)를
@@ -30,7 +30,7 @@
 [The Composable Architecture](https://github.com/pointfreeco/swift-composable-architecture)(TCA) 사용.
 
 ```
-Waypin (App)
+Flowney (App)
 ├── ShareExtension        # 구글맵 공유 링크를 앱으로 넘기는 Share Extension
 ├── Features/
 │   ├── Root               # 로그인 여부에 따라 최상위 화면 분기
@@ -68,7 +68,7 @@ Waypin (App)
 
 ```bash
 git clone <this repo>
-cd Waypin
+cd Flowney
 tuist install    # SwiftPM 의존성 설치
 tuist generate   # .xcworkspace 생성
 ```
@@ -92,8 +92,8 @@ Supabase 프로젝트에는 `mock-serverless/supabase/migrations`의 SQL을 순�
 ## 실행
 
 ```bash
-xcodebuild -workspace Waypin.xcworkspace -scheme Waypin \
+xcodebuild -workspace Flowney.xcworkspace -scheme Flowney \
   -destination 'generic/platform=iOS Simulator' build
 ```
 
-또는 `Waypin.xcworkspace`를 Xcode로 열어서 실행.
+또는 `Flowney.xcworkspace`를 Xcode로 열어서 실행.

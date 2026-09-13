@@ -13,7 +13,10 @@ public struct ItineraryFeature {
         public var countries: IdentifiedArrayOf<TripCountry> = []
         public var days: IdentifiedArrayOf<TripDay> = []
         public var selectedDayID: TripDay.ID?
+        public var editingDayLabelForID: TripDay.ID?
+        public var listSelectedItemID: ItineraryItem.ID?
         public var itemsByDay: [TripDay.ID: IdentifiedArrayOf<ItineraryItem>] = [:]
+        public var entries: IdentifiedArrayOf<BudgetEntry> = []
         public var legsByDay: [TripDay.ID: IdentifiedArrayOf<RouteLeg>] = [:]
         public var weatherByDay: [TripDay.ID: DayWeather] = [:]
         public var isLoading = false
@@ -117,17 +120,26 @@ public struct ItineraryFeature {
         case onAppear
         case daysResponse(Result<[TripDay], any Error>)
         case itemsResponse(Result<[ItineraryItem], any Error>)
+        case entriesResponse(Result<[BudgetEntry], any Error>)
         case countriesResponse(Result<[TripCountry], any Error>)
         case weatherResponse(TripDay.ID, Result<DayWeather, any Error>)
         case dayTabTapped(TripDay.ID)
+        case listItemTapped(ItineraryItem.ID)
+        case listSelectionCleared
+        case editDayLabelButtonTapped(TripDay.ID)
+        case dayLabelEditCancelled
+        case dayLabelChanged(TripDay.ID, String?)
+        case dayLabelUpdateResponse(Result<TripDay, any Error>)
         case addItemButtonTapped
         case editItemTapped(ItineraryItem)
         case addItemRequestConsumed
         case itemAdded(ItineraryItem)
         case deleteItems(IndexSet)
+        case deleteItemByID(ItineraryItem.ID)
         case deleteItemResponse(Result<ItineraryItem.ID, any Error>)
         case itemsMovedWithinDay(IndexSet, Int)
         case itemDroppedOnDay(ItineraryItem.ID, TripDay.ID)
+        case itemsReorderedAcrossDays([TripDay.ID: [ItineraryItem]])
         case reorderPersistResponse(Result<Void, any Error>)
         case countryCodesResolved([ItineraryItem.ID: String])
         case warningIconTapped(ItineraryItem.ID)
@@ -154,6 +166,7 @@ public struct ItineraryFeature {
 
     @Dependency(\.tripsRepository) var tripsRepository
     @Dependency(\.itineraryRepository) var itineraryRepository
+    @Dependency(\.budgetEntryRepository) var budgetEntryRepository
     @Dependency(\.routeAPIClient) var routeAPIClient
     @Dependency(\.routeCacheClient) var routeCacheClient
     @Dependency(\.weatherAPIClient) var weatherAPIClient
@@ -170,27 +183,27 @@ public struct ItineraryFeature {
 
             case .onAppear:
                 guard let tripID = state.trip?.id else { return .none }
-                WaypinLog.debug("onAppear trip=\(tripID)", category: .itinerary)
+                FlowneyLog.debug("onAppear trip=\(tripID)", category: .itinerary)
                 state.isLoading = true
                 let cachedWeatherDayIDs = Set(state.weatherByDay.keys)
                 return .run { send in
                     var days: [TripDay] = []
                     do {
                         days = try await tripsRepository.fetchDays(tripID)
-                        WaypinLog.debug("fetchDays succeeded count=\(days.count)", category: .itinerary)
+                        FlowneyLog.debug("fetchDays succeeded count=\(days.count)", category: .itinerary)
                         await send(.daysResponse(.success(days)))
                     } catch {
-                        WaypinLog.error("fetchDays failed: \(error)", category: .itinerary)
+                        FlowneyLog.error("fetchDays failed: \(error)", category: .itinerary)
                         await send(.daysResponse(.failure(error)))
                     }
 
                     var items: [ItineraryItem] = []
                     do {
                         items = try await itineraryRepository.fetchAllItems(tripID)
-                        WaypinLog.debug("fetchAllItems succeeded count=\(items.count)", category: .itinerary)
+                        FlowneyLog.debug("fetchAllItems succeeded count=\(items.count)", category: .itinerary)
                         await send(.itemsResponse(.success(items)))
                     } catch {
-                        WaypinLog.error("fetchAllItems failed: \(error)", category: .itinerary)
+                        FlowneyLog.error("fetchAllItems failed: \(error)", category: .itinerary)
                         await send(.itemsResponse(.failure(error)))
                     }
 
@@ -198,8 +211,16 @@ public struct ItineraryFeature {
                         let countries = try await tripsRepository.fetchCountries(tripID)
                         await send(.countriesResponse(.success(countries)))
                     } catch {
-                        WaypinLog.error("fetchCountries failed: \(error)", category: .itinerary)
+                        FlowneyLog.error("fetchCountries failed: \(error)", category: .itinerary)
                         await send(.countriesResponse(.failure(error)))
+                    }
+
+                    do {
+                        let entries = try await budgetEntryRepository.fetchAllEntries(tripID)
+                        await send(.entriesResponse(.success(entries)))
+                    } catch {
+                        FlowneyLog.error("fetchAllEntries failed: \(error)", category: .itinerary)
+                        await send(.entriesResponse(.failure(error)))
                     }
 
                     await fetchWeather(days: days, items: items, skippingCachedIn: cachedWeatherDayIDs, send: send)
@@ -238,6 +259,13 @@ public struct ItineraryFeature {
             case .countriesResponse(.failure):
                 return .none
 
+            case let .entriesResponse(.success(entries)):
+                state.entries = IdentifiedArrayOf(uniqueElements: entries)
+                return .none
+
+            case .entriesResponse(.failure):
+                return .none
+
             case let .weatherResponse(dayID, .success(weather)):
                 state.weatherByDay[dayID] = weather
                 return .none
@@ -253,15 +281,59 @@ public struct ItineraryFeature {
                 state.jumpTrigger += 1
                 return .none
 
+            case let .listItemTapped(itemID):
+                state.listSelectedItemID = state.listSelectedItemID == itemID ? nil : itemID
+                return .none
+
+            case .listSelectionCleared:
+                state.listSelectedItemID = nil
+                return .none
+
+            case let .editDayLabelButtonTapped(dayID):
+                state.editingDayLabelForID = dayID
+                return .none
+
+            case .dayLabelEditCancelled:
+                state.editingDayLabelForID = nil
+                return .none
+
+            case let .dayLabelChanged(dayID, newLabel):
+                state.editingDayLabelForID = nil
+                guard var day = state.days[id: dayID] else { return .none }
+                day.label = newLabel
+                state.days[id: dayID] = day
+
+                return .run { [tripsRepository, day] send in
+                    do {
+                        let saved = try await tripsRepository.updateDay(day)
+                        await send(.dayLabelUpdateResponse(.success(saved)))
+                    } catch {
+                        await send(.dayLabelUpdateResponse(.failure(error)))
+                    }
+                }
+
+            case let .dayLabelUpdateResponse(.success(day)):
+                state.days[id: day.id] = day
+                return .none
+
+            case let .dayLabelUpdateResponse(.failure(error)):
+                state.errorMessage = error.localizedDescription
+                return .none
+
             case .addItemButtonTapped:
-                guard let trip = state.trip, let dayID = state.selectedDayID, let day = state.days[id: dayID] else { return .none }
-                let count = state.itemsByDay[dayID]?.count ?? 0
-                state.addItemFlowRequest = AddItemFlowFeature.State(trip: trip, day: day, startingSortOrder: count, defaultTripID: trip.id)
+                guard let trip = state.trip else { return .none }
+                if let dayID = state.selectedDayID, let day = state.days[id: dayID] {
+                    let count = state.itemsByDay[dayID]?.count ?? 0
+                    state.addItemFlowRequest = AddItemFlowFeature.State(trip: trip, day: day, startingSortOrder: count, defaultTripID: trip.id)
+                } else {
+                    state.addItemFlowRequest = AddItemFlowFeature.State(defaultTripID: trip.id)
+                }
                 return .none
 
             case let .editItemTapped(item):
                 guard let trip = state.trip, let day = state.days[id: item.dayId] else { return .none }
-                state.addItemFlowRequest = AddItemFlowFeature.State(editingItem: item, trip: trip, day: day)
+                state.listSelectedItemID = nil
+                state.addItemFlowRequest = AddItemFlowFeature.State(editingItem: item, trip: trip, day: day, linkedEntry: state.entries[id: item.id])
                 return .none
 
             case .addItemRequestConsumed:
@@ -270,7 +342,13 @@ public struct ItineraryFeature {
 
             case let .itemAdded(item):
                 state.itemsByDay[item.dayId, default: []][id: item.id] = item
-                return resolveCountryCodes(for: [item])
+                return .merge(
+                    resolveCountryCodes(for: [item]),
+                    .run { [budgetEntryRepository, tripID = item.tripId] send in
+                        guard let entries = try? await budgetEntryRepository.fetchAllEntries(tripID) else { return }
+                        await send(.entriesResponse(.success(entries)))
+                    }
+                )
 
             case let .countryCodesResolved(resolved):
                 var itemsToPersist: [ItineraryItem] = []
@@ -291,7 +369,7 @@ public struct ItineraryFeature {
                         let country = TripCountry(
                             tripId: tripID,
                             countryCode: code,
-                            color: CountryCatalog.option(for: code)?.defaultColorHex ?? WaypinTheme.brandNavyHex,
+                            color: CountryCatalog.option(for: code)?.defaultColorHex ?? FlowneyTheme.brandNavyHex,
                             sortOrder: state.countries.count
                         )
                         state.countries.append(country)
@@ -321,13 +399,32 @@ public struct ItineraryFeature {
                 state.warningPopupItemID = nil
                 guard let dayID = state.itemsByDay.first(where: { $0.value[id: itemID] != nil })?.key else { return .none }
                 state.itemsByDay[dayID]?.remove(id: itemID)
+                state.entries.remove(id: itemID)
                 return .run { send in
                     do {
                         try await itineraryRepository.deleteItem(itemID)
-                        WaypinLog.debug("deleteItem OK id=\(itemID)", category: .itinerary)
+                        FlowneyLog.debug("deleteItem OK id=\(itemID)", category: .itinerary)
                         await send(.deleteItemResponse(.success(itemID)))
                     } catch {
-                        WaypinLog.error("deleteItem failed id=\(itemID): \(error)", category: .itinerary)
+                        FlowneyLog.error("deleteItem failed id=\(itemID): \(error)", category: .itinerary)
+                        await send(.deleteItemResponse(.failure(error)))
+                    }
+                }
+
+            case let .deleteItemByID(itemID):
+                guard let dayID = state.itemsByDay.first(where: { $0.value[id: itemID] != nil })?.key else { return .none }
+                state.itemsByDay[dayID]?.remove(id: itemID)
+                state.entries.remove(id: itemID)
+                if state.listSelectedItemID == itemID {
+                    state.listSelectedItemID = nil
+                }
+                return .run { send in
+                    do {
+                        try await itineraryRepository.deleteItem(itemID)
+                        FlowneyLog.debug("deleteItem OK id=\(itemID)", category: .itinerary)
+                        await send(.deleteItemResponse(.success(itemID)))
+                    } catch {
+                        FlowneyLog.error("deleteItem failed id=\(itemID): \(error)", category: .itinerary)
                         await send(.deleteItemResponse(.failure(error)))
                     }
                 }
@@ -338,14 +435,15 @@ public struct ItineraryFeature {
                 let ids = indexSet.map { items[$0].id }
                 items.remove(atOffsets: indexSet)
                 state.itemsByDay[dayID] = items
+                for id in ids { state.entries.remove(id: id) }
                 return .run { send in
                     for id in ids {
                         do {
                             try await itineraryRepository.deleteItem(id)
-                            WaypinLog.debug("deleteItem OK id=\(id)", category: .itinerary)
+                            FlowneyLog.debug("deleteItem OK id=\(id)", category: .itinerary)
                             await send(.deleteItemResponse(.success(id)))
                         } catch {
-                            WaypinLog.error("deleteItem failed id=\(id): \(error)", category: .itinerary)
+                            FlowneyLog.error("deleteItem failed id=\(id): \(error)", category: .itinerary)
                             await send(.deleteItemResponse(.failure(error)))
                         }
                     }
@@ -415,6 +513,45 @@ public struct ItineraryFeature {
                         }
                     )
                     itemsToPersist.append(contentsOf: sourceItems)
+                }
+
+                return .run { [itineraryRepository, updates, itemsToPersist] send in
+                    do {
+                        try await itineraryRepository.reorderItems(updates)
+                        for item in itemsToPersist {
+                            _ = try? await itineraryRepository.updateItem(item)
+                        }
+                        await send(.reorderPersistResponse(.success(())))
+                    } catch {
+                        await send(.reorderPersistResponse(.failure(error)))
+                    }
+                }
+
+            case let .itemsReorderedAcrossDays(newItemsByDay):
+                var updates: [ItemReorderUpdate] = []
+                var itemsToPersist: [ItineraryItem] = []
+
+                for (dayID, items) in newItemsByDay {
+                    var reindexed = items
+                    var dayChanged = false
+                    for index in reindexed.indices {
+                        if reindexed[index].dayId != dayID {
+                            dayChanged = true
+                        }
+                        reindexed[index].dayId = dayID
+                        reindexed[index].sortOrder = index
+                    }
+                    if dayChanged {
+                        for index in reindexed.indices {
+                            reindexed[index].arrivalMode = nil
+                        }
+                    }
+                    state.itemsByDay[dayID] = IdentifiedArrayOf(uniqueElements: reindexed)
+                    state.legsByDay[dayID] = []
+                    updates.append(
+                        contentsOf: reindexed.map { ItemReorderUpdate(id: $0.id, dayId: $0.dayId, sortOrder: $0.sortOrder) }
+                    )
+                    itemsToPersist.append(contentsOf: reindexed)
                 }
 
                 return .run { [itineraryRepository, updates, itemsToPersist] send in
@@ -528,18 +665,18 @@ public struct ItineraryFeature {
 
             case .searchAllRoutesButtonTapped:
                 guard !state.isSearchingAllRoutes, !state.isRefreshingTodayRoute, let tripID = state.trip?.id else { return .none }
-                WaypinLog.debug("전체 경로 탐색 시작 trip=\(tripID)", category: .route)
+                FlowneyLog.debug("전체 경로 탐색 시작 trip=\(tripID)", category: .route)
                 state.isSearchingAllRoutes = true
                 state.errorMessage = nil
                 return .run { send in
                     do {
                         let results = try await routeAPIClient.refreshTripRoutes(tripID, nil, .all)
-                        WaypinLog.debug("전체 경로 탐색 응답 days=\(results.count)", category: .route)
+                        FlowneyLog.debug("전체 경로 탐색 응답 days=\(results.count)", category: .route)
                         for result in results {
                             await send(.dayRoutesResponse(result.dayId, .success(result.legs)))
                         }
                     } catch {
-                        WaypinLog.error("전체 경로 탐색 실패: \(error)", category: .route)
+                        FlowneyLog.error("전체 경로 탐색 실패: \(error)", category: .route)
                         await send(.allRoutesRefreshFailed(error))
                     }
                     await send(.searchAllRoutesFinished)
@@ -547,21 +684,24 @@ public struct ItineraryFeature {
 
             case .todayRouteRefreshButtonTapped:
                 guard !state.isRefreshingTodayRoute, !state.isSearchingAllRoutes, let tripID = state.trip?.id else { return .none }
-                let todayUTCMidnight = DateOnly.normalizeToUTCMidnight(.now)
-                guard let todayDayID = state.days.first(where: { $0.dayDate == todayUTCMidnight })?.id else { return .none }
-                WaypinLog.debug("오늘 경로 갱신 시작 trip=\(tripID) day=\(todayDayID)", category: .route)
+                guard let selectedDayID = state.selectedDayID else {
+                    FlowneyLog.debug("선택 날짜 경로 갱신 스킵: 선택된 날짜 없음", category: .route)
+                    state.errorMessage = "먼저 날짜를 선택해주세요."
+                    return .none
+                }
+                FlowneyLog.debug("선택 날짜 경로 갱신 시작 trip=\(tripID) day=\(selectedDayID)", category: .route)
                 state.isRefreshingTodayRoute = true
                 state.errorMessage = nil
                 return .run { send in
                     do {
-                        let results = try await routeAPIClient.refreshTripRoutes(tripID, todayDayID, .today)
-                        WaypinLog.debug("오늘 경로 갱신 응답 days=\(results.count)", category: .route)
+                        let results = try await routeAPIClient.refreshTripRoutes(tripID, selectedDayID, .today)
+                        FlowneyLog.debug("선택 날짜 경로 갱신 응답 days=\(results.count)", category: .route)
                         for result in results {
                             await send(.dayRoutesResponse(result.dayId, .success(result.legs)))
                         }
                     } catch {
-                        WaypinLog.error("오늘 경로 갱신 실패: \(error)", category: .route)
-                        await send(.dayRoutesResponse(todayDayID, .failure(error)))
+                        FlowneyLog.error("선택 날짜 경로 갱신 실패: \(error)", category: .route)
+                        await send(.dayRoutesResponse(selectedDayID, .failure(error)))
                     }
                     await send(.todayRouteRefreshFinished)
                 }
@@ -572,13 +712,13 @@ public struct ItineraryFeature {
 
             case .refreshAllWeatherButtonTapped:
                 guard !state.isRefreshingWeather, state.trip != nil else { return .none }
-                WaypinLog.debug("전체 날씨 갱신 시작 days=\(state.days.count)", category: .weather)
+                FlowneyLog.debug("전체 날씨 갱신 시작 days=\(state.days.count)", category: .weather)
                 state.isRefreshingWeather = true
                 let days = Array(state.days)
                 let items = Array(state.itemsByDay.values.flatMap { $0 })
                 return .run { send in
                     await fetchWeather(days: days, items: items, send: send)
-                    WaypinLog.debug("전체 날씨 갱신 완료", category: .weather)
+                    FlowneyLog.debug("전체 날씨 갱신 완료", category: .weather)
                     await send(.weatherRefreshFinished)
                 }
 
@@ -592,34 +732,34 @@ public struct ItineraryFeature {
                 }
                 state.legsByDay[dayID] = IdentifiedArrayOf(uniqueElements: legs)
 
-                WaypinLog.debug("dayRoutesResponse day=\(dayID) legs=\(legs.count)", category: .route)
+                FlowneyLog.debug("dayRoutesResponse day=\(dayID) legs=\(legs.count)", category: .route)
                 for leg in legs {
-                    WaypinLog.debug("  leg to=\(leg.toItemId) status=\(leg.status) mode=\(leg.mode)", category: .route)
+                    FlowneyLog.debug("  leg to=\(leg.toItemId) status=\(leg.status) mode=\(leg.mode)", category: .route)
                 }
 
                 var itemsToPersist: [ItineraryItem] = []
                 for leg in legs where leg.status == .ok {
                     guard var item = state.itemsByDay[dayID]?[id: leg.toItemId] else {
-                        WaypinLog.warning("  no matching item for leg.toItemId=\(leg.toItemId)", category: .route)
+                        FlowneyLog.warning("  no matching item for leg.toItemId=\(leg.toItemId)", category: .route)
                         continue
                     }
                     guard item.arrivalMode != leg.mode else {
-                        WaypinLog.debug("  item \(item.id) arrivalMode already \(String(describing: item.arrivalMode)), skipping", category: .route)
+                        FlowneyLog.debug("  item \(item.id) arrivalMode already \(String(describing: item.arrivalMode)), skipping", category: .route)
                         continue
                     }
                     item.arrivalMode = leg.mode
                     state.itemsByDay[dayID]?[id: leg.toItemId] = item
                     itemsToPersist.append(item)
                 }
-                WaypinLog.debug("dayRoutesResponse itemsToPersist=\(itemsToPersist.count)", category: .route)
+                FlowneyLog.debug("dayRoutesResponse itemsToPersist=\(itemsToPersist.count)", category: .route)
                 return .run { [itineraryRepository, routeCacheClient, itemsToPersist] _ in
                     await routeCacheClient.save(legs, requestItemsForCache)
                     for item in itemsToPersist {
                         do {
                             _ = try await itineraryRepository.updateItem(item)
-                            WaypinLog.debug("updateItem OK for \(item.id) arrivalMode=\(String(describing: item.arrivalMode))", category: .route)
+                            FlowneyLog.debug("updateItem OK for \(item.id) arrivalMode=\(String(describing: item.arrivalMode))", category: .route)
                         } catch {
-                            WaypinLog.error("updateItem FAILED for \(item.id): \(error)", category: .route)
+                            FlowneyLog.error("updateItem FAILED for \(item.id): \(error)", category: .route)
                         }
                     }
                 }
@@ -677,28 +817,54 @@ public struct ItineraryFeature {
     }
 
     private func fetchWeather(
-        days: [TripDay],
+        days allDays: [TripDay],
         items: [ItineraryItem],
         skippingCachedIn cachedDayIDs: Set<TripDay.ID> = [],
         send: Send<Action>
     ) async {
-        let days = days.filter { !cachedDayIDs.contains($0.id) }
-        guard !days.isEmpty, !items.isEmpty else { return }
+        guard !allDays.isEmpty, !items.isEmpty else { return }
 
         struct DayLocation {
             let day: TripDay
             let lat: Double
             let lng: Double
         }
+
+        // 그 날 항목이 아직 없어서 위치를 모르는 날은, 가장 가까운 이전/다음 날의 위치를
+        // 빌려서라도 날씨를 보여준다 — 완전히 못 보여주는 것보단 근사치가 낫다.
+        var locationByDayID: [TripDay.ID: (lat: Double, lng: Double)] = [:]
+        for day in allDays {
+            if let firstItem = items
+                .filter({ $0.dayId == day.id })
+                .sorted(by: { $0.sortOrder < $1.sortOrder })
+                .first(where: { $0.lat != nil && $0.lng != nil }),
+                let lat = firstItem.lat, let lng = firstItem.lng {
+                locationByDayID[day.id] = (lat, lng)
+            }
+        }
+        var lastKnown: (lat: Double, lng: Double)?
+        for day in allDays {
+            if let known = locationByDayID[day.id] {
+                lastKnown = known
+            } else if let lastKnown {
+                locationByDayID[day.id] = lastKnown
+            }
+        }
+        var nextKnown: (lat: Double, lng: Double)?
+        for day in allDays.reversed() {
+            if let known = locationByDayID[day.id] {
+                nextKnown = known
+            } else if let nextKnown {
+                locationByDayID[day.id] = nextKnown
+            }
+        }
+
+        let days = allDays.filter { !cachedDayIDs.contains($0.id) }
+        guard !days.isEmpty else { return }
+
         let dayLocations: [DayLocation] = days.compactMap { day in
-            guard
-                let firstItem = items
-                    .filter({ $0.dayId == day.id })
-                    .sorted(by: { $0.sortOrder < $1.sortOrder })
-                    .first(where: { $0.lat != nil && $0.lng != nil }),
-                let lat = firstItem.lat, let lng = firstItem.lng
-            else { return nil }
-            return DayLocation(day: day, lat: lat, lng: lng)
+            guard let location = locationByDayID[day.id] else { return nil }
+            return DayLocation(day: day, lat: location.lat, lng: location.lng)
         }
 
         var blocks: [[DayLocation]] = []
@@ -728,18 +894,18 @@ public struct ItineraryFeature {
                             representative.lng,
                             block.map(\.day.dayDate)
                         )
-                        WaypinLog.debug("날씨 조회 성공 days=\(block.count) lat=\(representative.lat) lng=\(representative.lng)", category: .weather)
+                        FlowneyLog.debug("날씨 조회 성공 days=\(block.count) lat=\(representative.lat) lng=\(representative.lng)", category: .weather)
                         for location in block {
                             let key = keyFormatter.string(from: location.day.dayDate)
                             if let weather = weatherByDate[key] {
                                 await send(.weatherResponse(location.day.id, .success(weather)))
                             } else {
-                                WaypinLog.warning("날씨 데이터 없음 day=\(location.day.id)", category: .weather)
+                                FlowneyLog.warning("날씨 데이터 없음 day=\(location.day.id)", category: .weather)
                                 await send(.weatherResponse(location.day.id, .failure(WeatherAPIError.noData)))
                             }
                         }
                     } catch {
-                        WaypinLog.error("날씨 조회 실패: \(error)", category: .weather)
+                        FlowneyLog.error("날씨 조회 실패: \(error)", category: .weather)
                         for location in block {
                             await send(.weatherResponse(location.day.id, .failure(error)))
                         }
