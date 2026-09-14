@@ -1,5 +1,6 @@
 import APIClient
 import ComposableArchitecture
+import CoreLocation
 import DesignSystem
 import Models
 import SwiftUI
@@ -7,32 +8,38 @@ import SwiftUI
 struct AddItemFormView: View {
     @Bindable var store: StoreOf<AddItemFeature>
     @State private var isCurrencyManagementPresented = false
+    @State private var isMapPickerPresented = false
     @State private var tripCurrencies: [String] = []
+
+    private var showsDetailFields: Bool {
+        store.editingOriginalItem != nil || store.resolvedLat != nil
+    }
 
     var body: some View {
         Form {
             Section {
-                Picker(
-                    "등록 방식",
+                FlowneySegmentedControl(
                     selection: Binding(
                         get: { store.mode },
                         set: { store.send(.modeChanged($0)) }
-                    )
-                ) {
-                    ForEach(AddItemFeature.Mode.allCases, id: \.self) { mode in
-                        Text(mode.displayName).tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented)
+                    ),
+                    options: AddItemFeature.Mode.allCases,
+                    label: \.displayName
+                )
+            }
 
-                if store.resolvedLat != nil {
-                    Label("위치 확인됨 — 지도에 핀/경로가 표시돼요.", systemImage: "mappin.circle.fill")
-                        .font(WaypinFont.caption)
-                        .foregroundStyle(WaypinTheme.success)
-                } else {
-                    Label("위치 정보 없음 — 지도에 핀이나 경로가 안 나와요.", systemImage: "exclamationmark.triangle.fill")
-                        .font(WaypinFont.caption)
-                        .foregroundStyle(WaypinTheme.warning)
+            if store.mode == .manual {
+                Section("위치") {
+                    if store.resolvedLat != nil {
+                        if !store.address.isEmpty {
+                            Text(store.address)
+                                .font(FlowneyFont.caption)
+                                .foregroundStyle(FlowneyTheme.textSecondary)
+                        }
+                        Button("위치 다시 찾기") { isMapPickerPresented = true }
+                    } else {
+                        Button("지도에서 위치 찾기") { isMapPickerPresented = true }
+                    }
                 }
             }
 
@@ -47,7 +54,7 @@ struct AddItemFormView: View {
                                 store.linkURLText = ""
                             } label: {
                                 Image(systemName: "xmark.circle.fill")
-                                    .foregroundStyle(WaypinTheme.textSecondary)
+                                    .foregroundStyle(FlowneyTheme.textSecondary)
                             }
                             .buttonStyle(.borderless)
                         }
@@ -60,8 +67,8 @@ struct AddItemFormView: View {
                     }
                     if let linkResolveErrorMessage = store.linkResolveErrorMessage {
                         Text(linkResolveErrorMessage)
-                            .font(WaypinFont.caption)
-                            .foregroundStyle(WaypinTheme.error)
+                            .font(FlowneyFont.caption)
+                            .foregroundStyle(FlowneyTheme.error)
                     }
                 }
             }
@@ -76,8 +83,8 @@ struct AddItemFormView: View {
                         }
                     } else if store.dedupedReuseCandidates.isEmpty {
                         Text("좌표가 있는 장소가 아직 없어요. 링크로 가져온 항목이 있어야 재사용할 수 있어요.")
-                            .font(WaypinFont.caption)
-                            .foregroundStyle(WaypinTheme.textSecondary)
+                            .font(FlowneyFont.caption)
+                            .foregroundStyle(FlowneyTheme.textSecondary)
                     } else {
                         ForEach(store.dedupedReuseCandidates) { candidate in
                             Button {
@@ -87,18 +94,18 @@ struct AddItemFormView: View {
                                     Text(candidate.itemType.icon)
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(candidate.name)
-                                            .foregroundStyle(WaypinTheme.textPrimary)
+                                            .foregroundStyle(FlowneyTheme.textPrimary)
                                         if let address = candidate.address {
                                             Text(address)
-                                                .font(WaypinFont.caption)
-                                                .foregroundStyle(WaypinTheme.textSecondary)
+                                                .font(FlowneyFont.caption)
+                                                .foregroundStyle(FlowneyTheme.textSecondary)
                                                 .lineLimit(1)
                                         }
                                     }
                                     Spacer()
                                     if isSelectedReuseCandidate(candidate) {
                                         Image(systemName: "checkmark.circle.fill")
-                                            .foregroundStyle(WaypinTheme.success)
+                                            .foregroundStyle(FlowneyTheme.success)
                                     }
                                 }
                             }
@@ -107,63 +114,76 @@ struct AddItemFormView: View {
                 }
             }
 
-            Section("일정") {
-                TextField("이름 (예: 루브르 박물관, 점심 식사)", text: $store.name)
+            if showsDetailFields {
+                Section("일정") {
+                    TextField("이름 (예: 루브르 박물관, 점심 식사)", text: $store.name)
 
-                Picker("종류", selection: $store.itemType) {
-                    ForEach(ItemType.allCases, id: \.self) { type in
-                        Text(type.displayName).tag(type)
+                    Picker("종류", selection: $store.itemType) {
+                        ForEach(ItemType.allCases, id: \.self) { type in
+                            Text(type.displayName).tag(type)
+                        }
                     }
-                }
 
-                Picker("이동수단", selection: transportBucketBinding) {
-                    ForEach(TransportBucket.allCases, id: \.self) { bucket in
-                        Text(bucket.label).tag(bucket)
+                    Picker("이동수단", selection: transportBucketBinding) {
+                        ForEach(TransportBucket.allCases, id: \.self) { bucket in
+                            Text(bucket.label).tag(bucket)
+                        }
                     }
+                    .pickerStyle(.segmented)
+
+                    Toggle("시간 지정", isOn: $store.hasStartTime)
+                    if store.hasStartTime {
+                        DatePicker("시작 시간", selection: $store.startTime, displayedComponents: .hourAndMinute)
+                    }
+
+                    TextField("주소/메모용 위치 (선택)", text: $store.address)
                 }
-                .pickerStyle(.segmented)
 
-                Toggle("시간 지정", isOn: $store.hasStartTime)
-                if store.hasStartTime {
-                    DatePicker("시작 시간", selection: $store.startTime, displayedComponents: .hourAndMinute)
+                Section("비용") {
+                    CostInputSection(
+                        tripCurrencies: tripCurrencies,
+                        costAmountText: $store.costAmountText,
+                        costCurrency: $store.costCurrency,
+                        costAmountKRWText: $store.costAmountKRWText,
+                        costCategory: $store.costCategory,
+                        paymentStatus: $store.paymentStatus,
+                        onManageCurrenciesTapped: { isCurrencyManagementPresented = true }
+                    )
                 }
 
-                TextField("주소/메모용 위치 (선택)", text: $store.address)
-            }
+                Section("메모") {
+                    TextField("메모", text: $store.notes, axis: .vertical)
+                        .lineLimit(3...6)
+                }
 
-            Section("비용") {
-                CostInputSection(
-                    tripCurrencies: tripCurrencies,
-                    costAmountText: $store.costAmountText,
-                    costCurrency: $store.costCurrency,
-                    costAmountKRWText: $store.costAmountKRWText,
-                    costCategory: $store.costCategory,
-                    paymentStatus: $store.paymentStatus,
-                    onManageCurrenciesTapped: { isCurrencyManagementPresented = true }
-                )
-            }
-
-            Section("메모") {
-                TextField("메모", text: $store.notes, axis: .vertical)
-                    .lineLimit(3...6)
-            }
-
-            if let errorMessage = store.errorMessage {
-                Section {
-                    Text(errorMessage)
-                        .foregroundStyle(WaypinTheme.error)
+                if let errorMessage = store.errorMessage {
+                    Section {
+                        Text(errorMessage)
+                            .foregroundStyle(FlowneyTheme.error)
+                    }
                 }
             }
         }
         .scrollContentBackground(.hidden)
-        .background(WaypinTheme.background)
+        .background(FlowneyTheme.background)
         .scrollDismissesKeyboard(.immediately)
         .onAppear { tripCurrencies = TripCurrencyStore.read(tripID: store.tripID) }
         .onChange(of: store.savedItem) { _, savedItem in
-            guard let currency = savedItem?.costCurrency, currency.uppercased() != "KRW" else { return }
+            guard savedItem != nil, !store.costAmountText.isEmpty else { return }
+            let currency = store.costCurrency
+            guard currency.uppercased() != "KRW" else { return }
             guard !tripCurrencies.contains(where: { $0.uppercased() == currency.uppercased() }) else { return }
             tripCurrencies.append(currency)
             TripCurrencyStore.save(tripID: store.tripID, currencies: tripCurrencies)
+        }
+        .fullScreenCover(isPresented: $isMapPickerPresented) {
+            MapLocationPickerView(
+                initialCoordinate: mapPickerInitialCoordinate,
+                onConfirm: { place in
+                    store.send(.mapLocationPicked(place))
+                    isMapPickerPresented = false
+                }
+            )
         }
         .sheet(isPresented: $isCurrencyManagementPresented) {
             CurrencyManagementView(currentCurrencies: tripCurrencies) { finalCurrencies in
@@ -175,6 +195,17 @@ struct AddItemFormView: View {
                 }
             }
         }
+        .flowneyLifecycleLog(category: .addItem)
+    }
+
+    private var mapPickerInitialCoordinate: CLLocationCoordinate2D? {
+        if let lat = store.resolvedLat, let lng = store.resolvedLng {
+            return CLLocationCoordinate2D(latitude: lat, longitude: lng)
+        }
+        if let lastCamera = LastMapCameraStore.read() {
+            return CLLocationCoordinate2D(latitude: lastCamera.lat, longitude: lastCamera.lng)
+        }
+        return nil
     }
 
     private func isSelectedReuseCandidate(_ candidate: ItineraryItem) -> Bool {

@@ -48,6 +48,7 @@ public struct ShareInboxFeature {
             switch action {
             case .onAppear:
                 state.shares = IdentifiedArrayOf(uniqueElements: PendingShareStore.list())
+                FlowneyLog.debug("공유함 목록 로드 count=\(state.shares.count)", category: .share)
                 return .none
 
             case let .rowAppeared(share):

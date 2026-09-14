@@ -77,18 +77,18 @@ private struct ShareSnackbarView: View {
         VStack {
             Spacer()
             Text(message)
-                .font(WaypinFont.bodyEmphasis)
-                .foregroundStyle(WaypinTheme.textPrimary)
+                .font(FlowneyFont.bodyEmphasis)
+                .foregroundStyle(FlowneyTheme.textPrimary)
                 .frame(maxWidth: .infinity)
-                .padding(.horizontal, WaypinSpacing.lg)
-                .padding(.vertical, WaypinSpacing.md)
+                .padding(.horizontal, FlowneySpacing.lg)
+                .padding(.vertical, FlowneySpacing.md)
                 .background(
-                    RoundedRectangle(cornerRadius: WaypinRadius.lg, style: .continuous)
-                        .fill(WaypinTheme.surface)
+                    RoundedRectangle(cornerRadius: FlowneyRadius.lg, style: .continuous)
+                        .fill(FlowneyTheme.surface)
                         .shadow(color: .black.opacity(0.2), radius: 12, y: 4)
                 )
-                .padding(.horizontal, WaypinSpacing.lg)
-                .padding(.bottom, WaypinSpacing.xl)
+                .padding(.horizontal, FlowneySpacing.lg)
+                .padding(.bottom, FlowneySpacing.xl)
         }
         .animation(.easeInOut(duration: 0.2), value: message)
     }
@@ -103,7 +103,7 @@ private enum PendingShareWriter {
     }
 
     static func save(urlString: String) {
-        guard let defaults = UserDefaults(suiteName: "group.com.baci.waypin") else { return }
+        guard let defaults = UserDefaults(suiteName: "group.com.baci.flowney") else { return }
         var records: [PendingShareRecord] = []
         if
             let data = defaults.data(forKey: "pendingShares"),

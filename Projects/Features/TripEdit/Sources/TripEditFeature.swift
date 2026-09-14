@@ -1,6 +1,5 @@
 import APIClient
 import ComposableArchitecture
-import DesignSystem
 import Foundation
 import Models
 
@@ -12,7 +11,7 @@ public struct TripEditFeature {
         public var name: String
         public var startDate: Date
         public var endDate: Date
-        public var selectedCountryCodes: [String]
+        public var countries: IdentifiedArrayOf<TripCountry>
         public var isSaving = false
         public var errorMessage: String?
         public var savedTrip: Trip?
@@ -24,13 +23,12 @@ public struct TripEditFeature {
             self.name = trip?.name ?? ""
             self.startDate = trip?.startDate ?? .now
             self.endDate = trip?.endDate ?? .now.addingTimeInterval(4 * 86400)
-            self.selectedCountryCodes = countries.sorted { $0.sortOrder < $1.sortOrder }.map(\.countryCode)
+            self.countries = IdentifiedArrayOf(uniqueElements: countries.sorted { $0.sortOrder < $1.sortOrder })
         }
     }
 
     public enum Action: BindableAction {
         case binding(BindingAction<State>)
-        case countryToggled(String)
         case saveButtonTapped
         case cancelButtonTapped
         case saveResponse(Result<Trip, any Error>)
@@ -56,14 +54,6 @@ public struct TripEditFeature {
             case .binding:
                 return .none
 
-            case let .countryToggled(code):
-                if let idx = state.selectedCountryCodes.firstIndex(of: code) {
-                    state.selectedCountryCodes.remove(at: idx)
-                } else {
-                    state.selectedCountryCodes.append(code)
-                }
-                return .none
-
             case .saveButtonTapped:
                 guard !state.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                     state.errorMessage = "여행 이름을 입력해주세요."
@@ -71,10 +61,6 @@ public struct TripEditFeature {
                 }
                 guard state.endDate >= state.startDate else {
                     state.errorMessage = "종료일은 시작일 이후여야 해요."
-                    return .none
-                }
-                guard !state.selectedCountryCodes.isEmpty else {
-                    state.errorMessage = "국가를 1개 이상 선택해주세요."
                     return .none
                 }
                 state.errorMessage = nil
@@ -85,13 +71,14 @@ public struct TripEditFeature {
                 let name = state.name
                 let startDate = DateOnly.normalizeToUTCMidnight(state.startDate)
                 let endDate = DateOnly.normalizeToUTCMidnight(state.endDate)
-                let countryCodes = state.selectedCountryCodes
+                let countries = Array(state.countries)
                 let calendar: Calendar = {
                     var calendar = Calendar(identifier: .gregorian)
                     calendar.timeZone = TimeZone(identifier: "UTC")!
                     return calendar
                 }()
 
+                FlowneyLog.debug("트립 저장 시작 isCreating=\(isCreating) name=\(name)", category: .tripEdit)
                 return .run { send in
                     do {
                         guard let userID = await authClient.currentSession()?.user.id else {
@@ -109,29 +96,24 @@ public struct TripEditFeature {
                             ? try await tripsRepository.createTrip(trip)
                             : try await tripsRepository.updateTrip(trip)
 
-                        let countries = countryCodes.enumerated().map { index, code in
-                            TripCountry(
-                                tripId: tripID,
-                                countryCode: code,
-                                color: CountryCatalog.option(for: code)?.defaultColorHex ?? WaypinTheme.brandNavyHex,
-                                sortOrder: index
-                            )
+                        if !countries.isEmpty {
+                            try await tripsRepository.upsertCountries(countries)
                         }
-                        try await tripsRepository.upsertCountries(countries)
 
                         if isCreating {
                             let days = Self.generateDays(
                                 tripID: tripID,
                                 startDate: startDate,
                                 endDate: endDate,
-                                defaultCountryCode: countryCodes[0],
                                 calendar: calendar
                             )
                             _ = try await tripsRepository.createDays(days)
+                            FlowneyLog.debug("트립 생성 완료 days=\(days.count)", category: .tripEdit)
                         }
 
                         await send(.saveResponse(.success(savedTrip)))
                     } catch {
+                        FlowneyLog.error("트립 저장 실패: \(error)", category: .tripEdit)
                         await send(.saveResponse(.failure(error)))
                     }
                 }
@@ -159,7 +141,6 @@ public struct TripEditFeature {
         tripID: Trip.ID,
         startDate: Date,
         endDate: Date,
-        defaultCountryCode: String,
         calendar: Calendar
     ) -> [TripDay] {
         var days: [TripDay] = []
@@ -170,7 +151,7 @@ public struct TripEditFeature {
             days.append(
                 TripDay(
                     tripId: tripID,
-                    countryCode: defaultCountryCode,
+                    countryCode: "",
                     dayDate: current,
                     dayIndex: index
                 )

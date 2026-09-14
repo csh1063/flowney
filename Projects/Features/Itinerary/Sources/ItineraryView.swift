@@ -15,8 +15,8 @@ public struct ItineraryView: View {
     let onTripListRequested: () -> Void
 
     private let dayColumnWidth: CGFloat = 64
-    private static let expandedListHeight: CGFloat = 220
-    private static let collapsedListHeight: CGFloat = 120
+    private static let expandedListHeight: CGFloat = 228
+    private static let collapsedListHeight: CGFloat = 128
 
     public init(store: StoreOf<ItineraryFeature>, onTripListRequested: @escaping () -> Void) {
         self.store = store
@@ -44,7 +44,7 @@ public struct ItineraryView: View {
                 }
 
                 if store.trip != nil, store.days.isEmpty {
-                    WaypinTheme.background
+                    FlowneyTheme.background
                         .overlay { ProgressView() }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .ignoresSafeArea(edges: .bottom)
@@ -59,7 +59,14 @@ public struct ItineraryView: View {
                     .padding(.bottom, max(24, currentListHeight - UIApplication.shared.keyWindowSafeAreaInsets.bottom))
             }
         }
-        .waypinLeadingTitle(store.trip?.name ?? "Waypin")
+        .overlay(alignment: .bottomLeading) {
+            if store.trip != nil, let label = activeRefreshLabel {
+                RefreshStatusLabel(text: label)
+                    .padding(.leading, 16)
+                    .padding(.bottom, max(24, currentListHeight - UIApplication.shared.keyWindowSafeAreaInsets.bottom))
+            }
+        }
+        .flowneyLeadingTitle(store.trip?.name ?? "Flowney")
         .toolbar {
             if store.trip != nil {
                 ToolbarItem(placement: .primaryAction) {
@@ -80,7 +87,7 @@ public struct ItineraryView: View {
                                     systemImage: store.isSearchingAllRoutes ? "hourglass" : "point.topleft.down.curvedto.point.bottomright.up"
                                 )
                             }
-                            .disabled(store.isSearchingAllRoutes)
+                            .disabled(store.isSearchingAllRoutes || store.isRefreshingTodayRoute)
 
                             Button {
                                 store.send(.todayRouteRefreshButtonTapped)
@@ -90,7 +97,7 @@ public struct ItineraryView: View {
                                     systemImage: store.isRefreshingTodayRoute ? "hourglass" : "arrow.clockwise"
                                 )
                             }
-                            .disabled(store.isRefreshingTodayRoute)
+                            .disabled(store.isSearchingAllRoutes || store.isRefreshingTodayRoute)
 
                             Button {
                                 store.send(.refreshAllWeatherButtonTapped)
@@ -207,12 +214,15 @@ public struct ItineraryView: View {
                 TripShareView(store: shareStore)
             }
         }
+//        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 20) }
+        .flowneyLifecycleLog(category: .itinerary)
     }
 
     private var mapLayer: some View {
         RouteMapView(
             items: store.trip != nil ? store.selectedItems : [],
             legs: store.trip != nil ? store.selectedDayLegs : [],
+            countries: store.trip != nil ? store.countries : [],
             currentStopIndex: store.trip != nil ? store.currentStopIndex : nil,
             animateTrigger: store.animateTrigger,
             jumpTrigger: store.jumpTrigger,
@@ -231,17 +241,17 @@ public struct ItineraryView: View {
         } label: {
             Label("여행 불러오기", systemImage: "airplane")
         }
-        .buttonStyle(.waypinPrimary)
-        .padding(.horizontal, WaypinSpacing.xxl)
-        .padding(.vertical, WaypinSpacing.md)
-        .background(WaypinTheme.background)
+        .buttonStyle(.flowneyPrimary)
+        .padding(.horizontal, FlowneySpacing.xxl)
+        .padding(.vertical, FlowneySpacing.md)
+        .background(FlowneyTheme.background)
     }
 
     private func errorBanner(_ message: String) -> some View {
         VStack(spacing: 8) {
             Label("문제가 발생했어요", systemImage: "exclamationmark.triangle")
             Text(message)
-                .font(WaypinFont.caption)
+                .font(FlowneyFont.caption)
                 .foregroundStyle(.secondary)
         }
         .padding()
@@ -283,11 +293,11 @@ public struct ItineraryView: View {
             .padding(.top, 8)
 
             Text(store.selectedDayWeather.map(weatherSummary) ?? " ")
-                .font(WaypinFont.caption)
-                .foregroundStyle(WaypinTheme.textSecondary)
+                .font(FlowneyFont.caption)
+                .foregroundStyle(FlowneyTheme.textSecondary)
                 .padding(.bottom, 4)
         }
-        .background(WaypinTheme.background)
+        .background(FlowneyTheme.background)
     }
 
     private func weatherSummary(_ weather: DayWeather) -> String {
@@ -296,6 +306,13 @@ public struct ItineraryView: View {
             text += " (지난 평균)"
         }
         return text
+    }
+
+    private var activeRefreshLabel: String? {
+        if store.isSearchingAllRoutes { return "전체 경로 갱신 중" }
+        if store.isRefreshingTodayRoute { return "오늘 경로 갱신 중" }
+        if store.isRefreshingWeather { return "날씨 갱신 중" }
+        return nil
     }
 
     private var controlBar: some View {
@@ -360,10 +377,10 @@ public struct ItineraryView: View {
                                     .frame(width: 32)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("전체보기")
-                                        .font(WaypinFont.bodyEmphasis)
+                                        .font(FlowneyFont.bodyEmphasis)
                                     Text("오늘 동선 한눈에 보기")
-                                        .font(WaypinFont.caption)
-                                        .foregroundStyle(WaypinTheme.textSecondary)
+                                        .font(FlowneyFont.caption)
+                                        .foregroundStyle(FlowneyTheme.textSecondary)
                                 }
                                 Spacer()
                                 if store.currentStopIndex == nil {
@@ -379,7 +396,7 @@ public struct ItineraryView: View {
 
                         ForEach(store.selectedItems) { item in
                             HStack {
-                                ItineraryItemRowView(item: item)
+                                ItineraryItemRowView(item: item, costEntry: store.entries[id: item.id])
                                 if store.selectedItemID == item.id {
                                     Image(systemName: "location.fill")
                                         .foregroundStyle(.blue)
@@ -389,7 +406,7 @@ public struct ItineraryView: View {
                                         store.send(.warningIconTapped(item.id))
                                     } label: {
                                         Image(systemName: "exclamationmark.triangle.fill")
-                                            .foregroundStyle(WaypinTheme.warning)
+                                            .foregroundStyle(FlowneyTheme.warning)
                                     }
                                     .buttonStyle(.borderless)
                                 }
@@ -470,5 +487,22 @@ extension UIApplication {
             return .zero
         }
         return window.safeAreaInsets
+    }
+}
+
+private struct RefreshStatusLabel: View {
+    let text: String
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 0.45)) { context in
+            let dotCount = Int(context.date.timeIntervalSinceReferenceDate / 0.45) % 3 + 1
+            Text(text + String(repeating: ".", count: dotCount))
+                .font(.system(size: 12))
+                .foregroundStyle(FlowneyTheme.textSecondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(.thinMaterial)
+                .clipShape(Capsule())
+        }
     }
 }

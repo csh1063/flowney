@@ -1,6 +1,6 @@
 import SwiftUI
 
-public struct WaypinDateRangeCalendarView: View {
+public struct FlowneyDateRangeCalendarView: View {
     @Binding private var startDate: Date
     @Binding private var endDate: Date
     @State private var displayedMonth: Date
@@ -33,7 +33,7 @@ public struct WaypinDateRangeCalendarView: View {
     }
 
     public var body: some View {
-        VStack(spacing: WaypinSpacing.sm) {
+        VStack(spacing: FlowneySpacing.sm) {
             monthHeaderRow
             weekdayHeaderRow
             ForEach(Array(weeks.enumerated()), id: \.offset) { _, week in
@@ -51,7 +51,7 @@ public struct WaypinDateRangeCalendarView: View {
             }
             Spacer()
             Text(monthTitle)
-                .font(WaypinFont.bodyEmphasis)
+                .font(FlowneyFont.bodyEmphasis)
             Spacer()
             Button {
                 navigateMonth(by: 1)
@@ -59,16 +59,16 @@ public struct WaypinDateRangeCalendarView: View {
                 Image(systemName: "chevron.right")
             }
         }
-        .foregroundStyle(WaypinTheme.textPrimary)
-        .padding(.horizontal, WaypinSpacing.xs)
+        .foregroundStyle(FlowneyTheme.textPrimary)
+        .padding(.horizontal, FlowneySpacing.xs)
     }
 
     private var weekdayHeaderRow: some View {
         HStack(spacing: 0) {
             ForEach(Self.weekdayHeaderLabels, id: \.self) { label in
                 Text(label)
-                    .font(WaypinFont.caption)
-                    .foregroundStyle(WaypinTheme.textSecondary)
+                    .font(FlowneyFont.caption)
+                    .foregroundStyle(FlowneyTheme.textSecondary)
                     .frame(maxWidth: .infinity)
             }
         }
@@ -160,16 +160,16 @@ public struct WaypinDateRangeCalendarView: View {
             } label: {
                 ZStack {
                     if isStart || isEnd || isInRange {
-                        Rectangle().fill(WaypinTheme.fill.opacity(0.15))
+                        Rectangle().fill(FlowneyTheme.fill.opacity(0.15))
                     }
                     if isStart || isEnd {
                         Circle()
-                            .fill(WaypinTheme.fill)
+                            .fill(FlowneyTheme.fill)
                             .frame(width: 40, height: 40)
                     }
                     Text("\(Self.calendar.component(.day, from: day))")
-                        .font(WaypinFont.bodyEmphasis)
-                        .foregroundStyle((isStart || isEnd) ? WaypinTheme.fillLabel : WaypinTheme.textPrimary)
+                        .font(FlowneyFont.bodyEmphasis)
+                        .foregroundStyle((isStart || isEnd) ? FlowneyTheme.fillLabel : FlowneyTheme.textPrimary)
                 }
                 .frame(height: 40)
             }

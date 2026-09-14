@@ -1,6 +1,6 @@
 import SwiftUI
 
-public struct WaypinExpandableRow<Label: View, Content: View>: View {
+public struct FlowneyExpandableRow<Label: View, Content: View>: View {
     @State private var isExpanded = false
     private let label: Label
     private let content: Content
@@ -21,12 +21,12 @@ public struct WaypinExpandableRow<Label: View, Content: View>: View {
                     isExpanded.toggle()
                 }
             } label: {
-                HStack(spacing: WaypinSpacing.sm) {
+                HStack(spacing: FlowneySpacing.sm) {
                     label
                     Spacer()
                     Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(WaypinTheme.textSecondary)
+                        .foregroundStyle(FlowneyTheme.textSecondary)
                         .frame(width: Self.chevronReservedWidth)
                 }
                 .contentShape(Rectangle())
@@ -34,11 +34,11 @@ public struct WaypinExpandableRow<Label: View, Content: View>: View {
             .buttonStyle(.plain)
 
             if isExpanded {
-                VStack(alignment: .leading, spacing: WaypinSpacing.xs) {
+                VStack(alignment: .leading, spacing: FlowneySpacing.xs) {
                     content
                 }
-                .padding(.top, WaypinSpacing.sm)
-                .padding(.leading, WaypinSpacing.sm)
+                .padding(.top, FlowneySpacing.sm)
+                .padding(.leading, FlowneySpacing.sm)
                 .padding(.trailing, Self.chevronReservedWidth)
             }
         }

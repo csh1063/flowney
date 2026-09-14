@@ -41,24 +41,24 @@ struct BudgetLinkItemPickerView: View {
                         } label: {
                             HStack {
                                 Text(item.itemType.icon)
-                                VStack(alignment: .leading, spacing: WaypinSpacing.xs) {
+                                VStack(alignment: .leading, spacing: FlowneySpacing.xs) {
                                     Text(item.name)
-                                        .font(WaypinFont.bodyEmphasis)
-                                        .foregroundStyle(WaypinTheme.textPrimary)
+                                        .font(FlowneyFont.bodyEmphasis)
+                                        .foregroundStyle(FlowneyTheme.textPrimary)
                                     if let date = days[id: item.dayId]?.dayDate {
                                         Text(Self.dateFormatter.string(from: date))
-                                            .font(WaypinFont.caption)
-                                            .foregroundStyle(WaypinTheme.textSecondary)
+                                            .font(FlowneyFont.caption)
+                                            .foregroundStyle(FlowneyTheme.textSecondary)
                                     }
                                 }
                             }
                         }
-                        .listRowBackground(WaypinTheme.surface)
+                        .listRowBackground(FlowneyTheme.surface)
                     }
                 }
             }
             .scrollContentBackground(.hidden)
-            .background(WaypinTheme.background)
+            .background(FlowneyTheme.background)
             .navigationTitle("일정 선택")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

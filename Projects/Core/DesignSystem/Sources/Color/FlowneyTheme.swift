@@ -15,7 +15,7 @@ extension Color {
     }
 }
 
-public enum WaypinTheme {
+public enum FlowneyTheme {
     public static let brandNavyHex = "#0E1626"
     public static let brandNavy = Color(hex: brandNavyHex)
     public static let brandGold = Color(hex: "#FF6F59")

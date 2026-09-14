@@ -18,10 +18,21 @@ public struct RouteLegRequestItem: Encodable, Sendable {
     }
 }
 
-public enum RouteAPIError: Error, Equatable {
+public enum RouteAPIError: Error, Equatable, LocalizedError {
     case invalidEndpoint
     case notSignedIn
-    case requestFailed
+    case requestFailed(statusCode: Int, body: String)
+
+    public var errorDescription: String? {
+        switch self {
+        case .invalidEndpoint:
+            return "잘못된 서버 주소예요."
+        case .notSignedIn:
+            return "로그인이 필요해요."
+        case let .requestFailed(statusCode, body):
+            return "경로 갱신 실패 (HTTP \(statusCode)): \(body)"
+        }
+    }
 }
 
 public enum RouteRefreshScope: String, Encodable, Sendable {
@@ -44,6 +55,7 @@ extension RouteAPIClient: DependencyKey {
     public static let liveValue: RouteAPIClient = {
         RouteAPIClient(
             fetchDayRoutes: { items in
+                FlowneyLog.debug("fetchDayRoutes 요청 items=\(items.count)", category: .network)
                 guard let endpoint = URL(string: "https://mock-serverless.vercel.app/api/travel/route/day") else {
                     throw RouteAPIError.invalidEndpoint
                 }
@@ -62,13 +74,18 @@ extension RouteAPIClient: DependencyKey {
                     let httpResponse = response as? HTTPURLResponse,
                     (200 ..< 300).contains(httpResponse.statusCode)
                 else {
-                    throw RouteAPIError.requestFailed
+                    let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+                    let body = String(data: data, encoding: .utf8) ?? "(no body)"
+                    FlowneyLog.error("fetchDayRoutes HTTP \(statusCode): \(body)", category: .network)
+                    throw RouteAPIError.requestFailed(statusCode: statusCode, body: body)
                 }
 
                 let decoded = try JSONDecoder().decode(RouteDayResponse.self, from: data)
+                FlowneyLog.debug("fetchDayRoutes 응답 legs=\(decoded.legs.count)", category: .network)
                 return decoded.legs
             },
             refreshTripRoutes: { tripId, dayId, scope in
+                FlowneyLog.debug("refreshTripRoutes 요청 trip=\(tripId) day=\(String(describing: dayId)) scope=\(scope.rawValue)", category: .network)
                 guard let endpoint = URL(string: "https://mock-serverless.vercel.app/api/travel/trip/route/refresh") else {
                     throw RouteAPIError.invalidEndpoint
                 }
@@ -93,10 +110,14 @@ extension RouteAPIClient: DependencyKey {
                     let httpResponse = response as? HTTPURLResponse,
                     (200 ..< 300).contains(httpResponse.statusCode)
                 else {
-                    throw RouteAPIError.requestFailed
+                    let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+                    let body = String(data: data, encoding: .utf8) ?? "(no body)"
+                    FlowneyLog.error("refreshTripRoutes HTTP \(statusCode): \(body)", category: .network)
+                    throw RouteAPIError.requestFailed(statusCode: statusCode, body: body)
                 }
 
                 let decoded = try JSONDecoder().decode(RouteRefreshResponse.self, from: data)
+                FlowneyLog.debug("refreshTripRoutes 응답 days=\(decoded.days.count)", category: .network)
                 return decoded.days
             }
         )

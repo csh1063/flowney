@@ -1,5 +1,6 @@
 import ComposableArchitecture
 import Foundation
+import Models
 
 public struct ResolvedPlace: Codable, Equatable, Sendable {
     public var name: String
@@ -33,6 +34,7 @@ extension PlaceResolverAPIClient: DependencyKey {
     public static let liveValue: PlaceResolverAPIClient = {
         PlaceResolverAPIClient(
             resolve: { urlString in
+                FlowneyLog.debug("place resolve 요청 url=\(urlString)", category: .network)
                 guard let endpoint = URL(string: "https://mock-serverless.vercel.app/api/travel/place/resolve") else {
                     throw PlaceResolverError.invalidEndpoint
                 }
@@ -51,13 +53,18 @@ extension PlaceResolverAPIClient: DependencyKey {
                     let httpResponse = response as? HTTPURLResponse,
                     (200 ..< 300).contains(httpResponse.statusCode)
                 else {
+                    let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+                    let body = String(data: data, encoding: .utf8) ?? "(no body)"
+                    FlowneyLog.error("place resolve HTTP \(statusCode): \(body)", category: .network)
                     throw PlaceResolverError.requestFailed
                 }
 
                 let decoded = try JSONDecoder().decode(ResolveResponse.self, from: data)
                 guard decoded.result, let place = decoded.place else {
+                    FlowneyLog.warning("place resolve unresolvable url=\(urlString)", category: .network)
                     throw PlaceResolverError.unresolvableLink
                 }
+                FlowneyLog.debug("place resolve 성공 name=\(place.name)", category: .network)
                 return place
             }
         )

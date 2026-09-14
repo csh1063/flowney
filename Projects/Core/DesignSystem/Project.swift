@@ -1,10 +1,10 @@
 import ProjectDescription
 import ProjectDescriptionHelpers
 
-let project = waypinModuleProject(
+let project = flowneyModuleProject(
     moduleName: "DesignSystem",
     bundleIdSuffix: "core.designsystem",
     dependencies: [
-        WaypinModule.models.dependency,
+        FlowneyModule.models.dependency,
     ]
 )

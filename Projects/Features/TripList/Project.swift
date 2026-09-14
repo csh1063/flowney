@@ -1,14 +1,14 @@
 import ProjectDescription
 import ProjectDescriptionHelpers
 
-let project = waypinModuleProject(
+let project = flowneyModuleProject(
     moduleName: "TripList",
     bundleIdSuffix: "features.triplist",
     dependencies: [
-        WaypinModule.models.dependency,
-        WaypinModule.designSystem.dependency,
-        WaypinModule.apiClient.dependency,
-        WaypinModule.tripEdit.dependency,
+        FlowneyModule.models.dependency,
+        FlowneyModule.designSystem.dependency,
+        FlowneyModule.apiClient.dependency,
+        FlowneyModule.tripEdit.dependency,
         .external(name: "ComposableArchitecture"),
     ]
 )

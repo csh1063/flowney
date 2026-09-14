@@ -2,17 +2,17 @@ import ProjectDescription
 import ProjectDescriptionHelpers
 
 let project = Project(
-    name: "WaypinShareExtension",
+    name: "FlowneyShareExtension",
     targets: [
         .target(
-            name: "WaypinShareExtension",
+            name: "FlowneyShareExtension",
             destinations: Constants.destinations,
             product: .appExtension,
             bundleId: "\(Constants.bundleIdPrefix).shareextension",
             deploymentTargets: Constants.deploymentTargets,
             infoPlist: .extendingDefault(
                 with: [
-                    "CFBundleDisplayName": "Waypin에 추가",
+                    "CFBundleDisplayName": "Flowney에 추가",
                     "NSExtension": [
                         "NSExtensionPointIdentifier": "com.apple.share-services",
                         "NSExtensionPrincipalClass": "$(PRODUCT_MODULE_NAME).ShareViewController",
@@ -26,9 +26,9 @@ let project = Project(
                 ]
             ),
             sources: ["Sources/**"],
-            entitlements: .file(path: "WaypinShareExtension.entitlements"),
+            entitlements: .file(path: "FlowneyShareExtension.entitlements"),
             dependencies: [
-                WaypinModule.designSystem.dependency,
+                FlowneyModule.designSystem.dependency,
             ],
             settings: .settings(
                 base: [

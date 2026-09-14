@@ -85,16 +85,16 @@ public struct CostInputSection: View {
                 Label("통화 관리", systemImage: "slider.horizontal.3")
             }
         } label: {
-            HStack(spacing: WaypinSpacing.xs) {
+            HStack(spacing: FlowneySpacing.xs) {
                 Text(costCurrency)
-                    .font(WaypinFont.bodyEmphasis)
+                    .font(FlowneyFont.bodyEmphasis)
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.caption2)
             }
-            .foregroundStyle(WaypinTheme.textPrimary)
-            .padding(.horizontal, WaypinSpacing.sm)
-            .padding(.vertical, WaypinSpacing.xs)
-            .background(WaypinTheme.divider, in: Capsule())
+            .foregroundStyle(FlowneyTheme.textPrimary)
+            .padding(.horizontal, FlowneySpacing.sm)
+            .padding(.vertical, FlowneySpacing.xs)
+            .background(FlowneyTheme.divider, in: Capsule())
         }
     }
 }

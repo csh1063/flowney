@@ -1,15 +1,15 @@
 import ProjectDescription
 import ProjectDescriptionHelpers
 
-let project = waypinModuleProject(
+let project = flowneyModuleProject(
     moduleName: "Itinerary",
     bundleIdSuffix: "features.itinerary",
     dependencies: [
-        WaypinModule.models.dependency,
-        WaypinModule.designSystem.dependency,
-        WaypinModule.apiClient.dependency,
-        WaypinModule.addItem.dependency,
-        WaypinModule.tripEdit.dependency,
+        FlowneyModule.models.dependency,
+        FlowneyModule.designSystem.dependency,
+        FlowneyModule.apiClient.dependency,
+        FlowneyModule.addItem.dependency,
+        FlowneyModule.tripEdit.dependency,
         .external(name: "ComposableArchitecture"),
         .external(name: "GoogleMaps"),
     ]

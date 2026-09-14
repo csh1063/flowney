@@ -14,129 +14,129 @@ public struct DesignSystemCatalogView: View {
             componentSection
         }
         .scrollContentBackground(.hidden)
-        .background(WaypinTheme.background)
+        .background(FlowneyTheme.background)
         .navigationTitle("디자인 시스템")
         .navigationBarTitleDisplayMode(.inline)
     }
 
     private var colorSection: some View {
         Section("색상") {
-            swatchRow("accent (Gold)", color: WaypinTheme.accent)
-            swatchRow("fill (Brand Primary)", color: WaypinTheme.fill)
-            swatchRow("primaryContainer", color: WaypinTheme.primaryContainer)
-            swatchRow("brandNavy (고정)", color: WaypinTheme.brandNavy)
-            swatchRow("brandGold (고정)", color: WaypinTheme.brandGold)
-            swatchRow("background", color: WaypinTheme.background)
-            swatchRow("surface", color: WaypinTheme.surface)
-            swatchRow("textPrimary", color: WaypinTheme.textPrimary)
-            swatchRow("textSecondary", color: WaypinTheme.textSecondary)
-            swatchRow("divider", color: WaypinTheme.divider)
-            swatchRow("success", color: WaypinTheme.success)
-            swatchRow("warning", color: WaypinTheme.warning)
-            swatchRow("error", color: WaypinTheme.error)
+            swatchRow("accent (Gold)", color: FlowneyTheme.accent)
+            swatchRow("fill (Brand Primary)", color: FlowneyTheme.fill)
+            swatchRow("primaryContainer", color: FlowneyTheme.primaryContainer)
+            swatchRow("brandNavy (고정)", color: FlowneyTheme.brandNavy)
+            swatchRow("brandGold (고정)", color: FlowneyTheme.brandGold)
+            swatchRow("background", color: FlowneyTheme.background)
+            swatchRow("surface", color: FlowneyTheme.surface)
+            swatchRow("textPrimary", color: FlowneyTheme.textPrimary)
+            swatchRow("textSecondary", color: FlowneyTheme.textSecondary)
+            swatchRow("divider", color: FlowneyTheme.divider)
+            swatchRow("success", color: FlowneyTheme.success)
+            swatchRow("warning", color: FlowneyTheme.warning)
+            swatchRow("error", color: FlowneyTheme.error)
         }
-        .listRowBackground(WaypinTheme.surface)
+        .listRowBackground(FlowneyTheme.surface)
     }
 
     private func swatchRow(_ label: String, color: Color) -> some View {
-        HStack(spacing: WaypinSpacing.md) {
-            RoundedRectangle(cornerRadius: WaypinRadius.sm, style: .continuous)
+        HStack(spacing: FlowneySpacing.md) {
+            RoundedRectangle(cornerRadius: FlowneyRadius.sm, style: .continuous)
                 .fill(color)
                 .frame(width: 36, height: 36)
                 .overlay(
-                    RoundedRectangle(cornerRadius: WaypinRadius.sm, style: .continuous)
-                        .stroke(WaypinTheme.divider, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: FlowneyRadius.sm, style: .continuous)
+                        .stroke(FlowneyTheme.divider, lineWidth: 1)
                 )
             Text(label)
-                .font(WaypinFont.body)
+                .font(FlowneyFont.body)
         }
     }
 
     private var typographySection: some View {
         Section("타이포그래피") {
-            typeRow("screenTitle", font: WaypinFont.screenTitle)
-            typeRow("sectionHeader", font: WaypinFont.sectionHeader)
-            typeRow("body", font: WaypinFont.body)
-            typeRow("bodyEmphasis", font: WaypinFont.bodyEmphasis)
-            typeRow("caption", font: WaypinFont.caption)
-            typeRow("captionEmphasis", font: WaypinFont.captionEmphasis)
-            typeRow("numeric — 1,234,000 ₩", font: WaypinFont.numeric)
+            typeRow("screenTitle", font: FlowneyFont.screenTitle)
+            typeRow("sectionHeader", font: FlowneyFont.sectionHeader)
+            typeRow("body", font: FlowneyFont.body)
+            typeRow("bodyEmphasis", font: FlowneyFont.bodyEmphasis)
+            typeRow("caption", font: FlowneyFont.caption)
+            typeRow("captionEmphasis", font: FlowneyFont.captionEmphasis)
+            typeRow("numeric — 1,234,000 ₩", font: FlowneyFont.numeric)
         }
-        .listRowBackground(WaypinTheme.surface)
+        .listRowBackground(FlowneyTheme.surface)
     }
 
     private func typeRow(_ label: String, font: Font) -> some View {
-        VStack(alignment: .leading, spacing: WaypinSpacing.xs) {
+        VStack(alignment: .leading, spacing: FlowneySpacing.xs) {
             Text("여행의 모든 순간")
                 .font(font)
             Text(label)
-                .font(WaypinFont.caption)
-                .foregroundStyle(WaypinTheme.textSecondary)
+                .font(FlowneyFont.caption)
+                .foregroundStyle(FlowneyTheme.textSecondary)
         }
-        .padding(.vertical, WaypinSpacing.xs)
+        .padding(.vertical, FlowneySpacing.xs)
     }
 
     private var spacingSection: some View {
         Section("여백 스케일") {
-            spacingRow("xs", value: WaypinSpacing.xs)
-            spacingRow("sm", value: WaypinSpacing.sm)
-            spacingRow("md", value: WaypinSpacing.md)
-            spacingRow("lg", value: WaypinSpacing.lg)
-            spacingRow("xl", value: WaypinSpacing.xl)
-            spacingRow("xxl", value: WaypinSpacing.xxl)
+            spacingRow("xs", value: FlowneySpacing.xs)
+            spacingRow("sm", value: FlowneySpacing.sm)
+            spacingRow("md", value: FlowneySpacing.md)
+            spacingRow("lg", value: FlowneySpacing.lg)
+            spacingRow("xl", value: FlowneySpacing.xl)
+            spacingRow("xxl", value: FlowneySpacing.xxl)
         }
-        .listRowBackground(WaypinTheme.surface)
+        .listRowBackground(FlowneyTheme.surface)
     }
 
     private func spacingRow(_ label: String, value: CGFloat) -> some View {
-        HStack(spacing: WaypinSpacing.md) {
+        HStack(spacing: FlowneySpacing.md) {
             Text(label)
-                .font(WaypinFont.caption)
+                .font(FlowneyFont.caption)
                 .frame(width: 32, alignment: .leading)
             RoundedRectangle(cornerRadius: 2)
-                .fill(WaypinTheme.accent)
+                .fill(FlowneyTheme.accent)
                 .frame(width: value, height: 12)
             Text("\(Int(value))pt")
-                .font(WaypinFont.caption)
-                .foregroundStyle(WaypinTheme.textSecondary)
+                .font(FlowneyFont.caption)
+                .foregroundStyle(FlowneyTheme.textSecondary)
         }
     }
 
     private var radiusSection: some View {
         Section("코너 radius 스케일") {
-            HStack(spacing: WaypinSpacing.lg) {
-                radiusSwatch("sm", value: WaypinRadius.sm)
-                radiusSwatch("md", value: WaypinRadius.md)
-                radiusSwatch("lg", value: WaypinRadius.lg)
+            HStack(spacing: FlowneySpacing.lg) {
+                radiusSwatch("sm", value: FlowneyRadius.sm)
+                radiusSwatch("md", value: FlowneyRadius.md)
+                radiusSwatch("lg", value: FlowneyRadius.lg)
                 radiusSwatch("pill", value: 20)
             }
-            .padding(.vertical, WaypinSpacing.sm)
+            .padding(.vertical, FlowneySpacing.sm)
         }
-        .listRowBackground(WaypinTheme.surface)
+        .listRowBackground(FlowneyTheme.surface)
     }
 
     private func radiusSwatch(_ label: String, value: CGFloat) -> some View {
-        VStack(spacing: WaypinSpacing.xs) {
+        VStack(spacing: FlowneySpacing.xs) {
             RoundedRectangle(cornerRadius: value, style: .continuous)
-                .fill(WaypinTheme.accent)
+                .fill(FlowneyTheme.accent)
                 .frame(width: 48, height: 48)
             Text(label)
-                .font(WaypinFont.caption)
-                .foregroundStyle(WaypinTheme.textSecondary)
+                .font(FlowneyFont.caption)
+                .foregroundStyle(FlowneyTheme.textSecondary)
         }
         .frame(maxWidth: .infinity)
     }
 
     private var cardSection: some View {
-        Section("카드 (.waypinCard())") {
-            VStack(alignment: .leading, spacing: WaypinSpacing.xs) {
+        Section("카드 (.flowneyCard())") {
+            VStack(alignment: .leading, spacing: FlowneySpacing.xs) {
                 Text("여행 이름")
-                    .font(WaypinFont.bodyEmphasis)
+                    .font(FlowneyFont.bodyEmphasis)
                 Text("2026.09.19 - 2026.10.03")
-                    .font(WaypinFont.caption)
-                    .foregroundStyle(WaypinTheme.textSecondary)
+                    .font(FlowneyFont.caption)
+                    .foregroundStyle(FlowneyTheme.textSecondary)
             }
-            .waypinCard()
+            .flowneyCard()
             .listRowInsets(EdgeInsets())
         }
         .listRowBackground(Color.clear)
@@ -145,18 +145,18 @@ public struct DesignSystemCatalogView: View {
     private var componentSection: some View {
         Section("컴포넌트") {
             Button("PrimaryButtonStyle") {}
-                .buttonStyle(.waypinPrimary)
+                .buttonStyle(.flowneyPrimary)
                 .listRowInsets(EdgeInsets())
-                .padding(WaypinSpacing.md)
+                .padding(FlowneySpacing.md)
 
-            HStack(spacing: WaypinSpacing.sm) {
+            HStack(spacing: FlowneySpacing.sm) {
                 ForEach(PaymentStatus.allCases, id: \.rawValue) { status in
                     StatusPill(text: status.displayName, color: status.pillColor)
                 }
             }
-            .padding(.vertical, WaypinSpacing.xs)
+            .padding(.vertical, FlowneySpacing.xs)
         }
-        .listRowBackground(WaypinTheme.surface)
+        .listRowBackground(FlowneyTheme.surface)
     }
 }
 

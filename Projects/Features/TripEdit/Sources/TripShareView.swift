@@ -3,32 +3,36 @@ import DesignSystem
 import Models
 import SwiftUI
 
-struct TripShareView: View {
+public struct TripShareView: View {
     @Bindable var store: StoreOf<TripShareFeature>
     @Environment(\.dismiss) private var dismiss
 
-    var body: some View {
+    public init(store: StoreOf<TripShareFeature>) {
+        self.store = store
+    }
+
+    public var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: WaypinSpacing.lg) {
+                VStack(alignment: .leading, spacing: FlowneySpacing.lg) {
                     if store.isLoading {
                         ProgressView()
                             .frame(maxWidth: .infinity)
-                            .padding(.top, WaypinSpacing.xxl)
+                            .padding(.top, FlowneySpacing.xxl)
                     } else {
                         sectionBlock("공개 범위") {
-                            Picker("공개 범위", selection: $store.visibility) {
-                                Text("전체공개").tag(TripShare.Visibility.pub)
-                                Text("비공개").tag(TripShare.Visibility.password)
-                            }
-                            .pickerStyle(.segmented)
+                            FlowneySegmentedControl(
+                                selection: $store.visibility,
+                                options: [TripShare.Visibility.pub, .password],
+                                label: { $0 == .pub ? "전체공개" : "비공개" }
+                            )
 
                             if store.visibility == .password {
                                 SecureField(
                                     store.share?.visibility == .password ? "비밀번호 변경(선택)" : "비밀번호",
                                     text: $store.password
                                 )
-                                .padding(.top, WaypinSpacing.sm)
+                                .padding(.top, FlowneySpacing.sm)
                             }
                         }
 
@@ -43,18 +47,18 @@ struct TripShareView: View {
                                     .frame(maxWidth: .infinity)
                             }
                         }
-                        .buttonStyle(.waypinPrimary)
+                        .buttonStyle(.flowneyPrimary)
                         .disabled(store.isSaving)
 
                         if let share = store.share {
                             sectionBlock("공유 링크") {
                                 Text(share.shareURL.absoluteString)
-                                    .font(WaypinFont.caption)
-                                    .foregroundStyle(WaypinTheme.textSecondary)
+                                    .font(FlowneyFont.caption)
+                                    .foregroundStyle(FlowneyTheme.textSecondary)
                                     .lineLimit(1)
                                     .truncationMode(.middle)
 
-                                HStack(spacing: WaypinSpacing.sm) {
+                                HStack(spacing: FlowneySpacing.sm) {
                                     Button {
                                         store.send(.copyLinkButtonTapped)
                                     } label: {
@@ -67,7 +71,7 @@ struct TripShareView: View {
                                     }
                                     .buttonStyle(.bordered)
                                 }
-                                .padding(.top, WaypinSpacing.xs)
+                                .padding(.top, FlowneySpacing.xs)
                             }
 
                             Button(role: .destructive) {
@@ -81,15 +85,15 @@ struct TripShareView: View {
 
                         if let errorMessage = store.errorMessage {
                             Text(errorMessage)
-                                .font(WaypinFont.caption)
-                                .foregroundStyle(WaypinTheme.error)
-                                .waypinCard()
+                                .font(FlowneyFont.caption)
+                                .foregroundStyle(FlowneyTheme.error)
+                                .flowneyCard()
                         }
                     }
                 }
-                .padding(WaypinSpacing.lg)
+                .padding(FlowneySpacing.lg)
             }
-            .background(WaypinTheme.background)
+            .background(FlowneyTheme.background)
             .navigationTitle("여행 공유")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -104,12 +108,12 @@ struct TripShareView: View {
     }
 
     private func sectionBlock<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: WaypinSpacing.sm) {
+        VStack(alignment: .leading, spacing: FlowneySpacing.sm) {
             Text(title)
-                .font(WaypinFont.sectionHeader)
-                .foregroundStyle(WaypinTheme.textSecondary)
+                .font(FlowneyFont.sectionHeader)
+                .foregroundStyle(FlowneyTheme.textSecondary)
             content()
         }
-        .waypinCard()
+        .flowneyCard()
     }
 }

@@ -12,7 +12,7 @@ public struct StatusPill: View {
 
     public var body: some View {
         Text(text)
-            .font(WaypinFont.captionEmphasis)
+            .font(FlowneyFont.captionEmphasis)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background(color.opacity(0.15), in: RoundedRectangle(cornerRadius: 999, style: .continuous))
@@ -23,9 +23,9 @@ public struct StatusPill: View {
 extension PaymentStatus {
     public var pillColor: Color {
         switch self {
-        case .paid: return WaypinTheme.success
-        case .fixed: return WaypinTheme.accent
-        case .pending: return WaypinTheme.warning
+        case .paid: return FlowneyTheme.success
+        case .fixed: return FlowneyTheme.accent
+        case .pending: return FlowneyTheme.warning
         }
     }
 }

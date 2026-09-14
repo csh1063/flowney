@@ -16,6 +16,7 @@ public struct TripsRepository: Sendable {
 
     public var fetchDays: @Sendable (_ tripId: Trip.ID) async throws -> [TripDay]
     public var createDays: @Sendable (_ days: [TripDay]) async throws -> [TripDay]
+    public var updateDay: @Sendable (_ day: TripDay) async throws -> TripDay
 }
 
 extension TripsRepository: DependencyKey {
@@ -95,6 +96,16 @@ extension TripsRepository: DependencyKey {
                     .from("trip_days")
                     .insert(days)
                     .select()
+                    .execute()
+                    .value
+            },
+            updateDay: { day in
+                try await client
+                    .from("trip_days")
+                    .update(day)
+                    .eq("id", value: day.id)
+                    .select()
+                    .single()
                     .execute()
                     .value
             }

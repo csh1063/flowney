@@ -26,7 +26,7 @@ public struct TripListView: View {
                 } description: {
                     if let errorMessage = store.errorMessage {
                         Text(errorMessage)
-                            .foregroundStyle(WaypinTheme.error)
+                            .foregroundStyle(FlowneyTheme.error)
                     } else {
                         Text("아래 버튼으로 첫 여행을 만들어보세요.")
                     }
@@ -36,7 +36,7 @@ public struct TripListView: View {
                             TripEditFeature()
                         }
                     }
-                    .buttonStyle(.waypinPrimary)
+                    .buttonStyle(.flowneyPrimary)
                     Button("샘플 여행 불러오기") {
                         store.send(.loadSampleDataButtonTapped)
                     }
@@ -49,12 +49,12 @@ public struct TripListView: View {
                         }
                     } label: {
                         Label("여행 추가하기", systemImage: "plus.circle.fill")
-                            .font(WaypinFont.bodyEmphasis)
-                            .foregroundStyle(WaypinTheme.accent)
-                            .waypinCard()
+                            .font(FlowneyFont.bodyEmphasis)
+                            .foregroundStyle(FlowneyTheme.accent)
+                            .flowneyCard()
                     }
                     .buttonStyle(.plain)
-                    .waypinCardListRow()
+                    .flowneyCardListRow()
 
                     ForEach(store.trips) { trip in
                         Button {
@@ -63,7 +63,7 @@ public struct TripListView: View {
                             TripSummaryRowView(trip: trip)
                         }
                         .buttonStyle(.plain)
-                        .waypinCardListRow()
+                        .flowneyCardListRow()
                     }
                     .onDelete { store.send(.deleteTrip($0)) }
                 }
@@ -71,7 +71,7 @@ public struct TripListView: View {
                 .scrollContentBackground(.hidden)
             }
         }
-        .background(WaypinTheme.background)
+        .background(FlowneyTheme.background)
         .navigationTitle("여행 목록")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

@@ -12,9 +12,17 @@ public struct AddItemFeature {
 
         public var displayName: String {
             switch self {
-            case .manual: return "직접 입력"
-            case .link: return "링크로 가져오기"
+            case .manual: return "직접 찾기"
+            case .link: return "구글 링크"
             case .reuse: return "기존 장소"
+            }
+        }
+
+        public var itemSource: ItemSource {
+            switch self {
+            case .manual: .manual
+            case .link: .link
+            case .reuse: .reuse
             }
         }
     }
@@ -77,7 +85,7 @@ public struct AddItemFeature {
             self.startingSortOrder = startingSortOrder
         }
 
-        public init(editing item: ItineraryItem, tripID: Trip.ID, dayID: TripDay.ID) {
+        public init(editing item: ItineraryItem, tripID: Trip.ID, dayID: TripDay.ID, linkedEntry: BudgetEntry? = nil) {
             self.tripID = tripID
             self.dayID = dayID
             startingSortOrder = item.sortOrder
@@ -89,11 +97,13 @@ public struct AddItemFeature {
                 hasStartTime = true
                 startTime = date
             }
-            costAmountText = item.costAmount.map { "\($0)" } ?? ""
-            costCurrency = item.costCurrency ?? "KRW"
-            costAmountKRWText = item.costAmountKRW.map { "\($0)" } ?? ""
-            costCategory = item.costCategory
-            paymentStatus = item.paymentStatus
+            if let linkedEntry {
+                costAmountText = linkedEntry.costAmount.map { "\($0)" } ?? ""
+                costCurrency = linkedEntry.costCurrency ?? "KRW"
+                costAmountKRWText = linkedEntry.costAmountKRW.map { "\($0)" } ?? ""
+                costCategory = linkedEntry.costCategory
+                paymentStatus = linkedEntry.paymentStatus
+            }
             address = item.address ?? ""
             notes = item.notes ?? ""
             resolvedLat = item.lat
@@ -114,6 +124,7 @@ public struct AddItemFeature {
     public enum Action: BindableAction {
         case binding(BindingAction<State>)
         case modeChanged(Mode)
+        case mapLocationPicked(ResolvedPlace)
         case resolveLinkButtonTapped
         case resolveLinkResponse(Result<ResolvedPlace, any Error>)
         case reuseCandidatesResponse(Result<[ItineraryItem], any Error>)
@@ -131,6 +142,7 @@ public struct AddItemFeature {
     }
 
     @Dependency(\.itineraryRepository) var itineraryRepository
+    @Dependency(\.budgetEntryRepository) var budgetEntryRepository
     @Dependency(\.placeResolverAPIClient) var placeResolverAPIClient
     @Dependency(\.uuid) var uuid
 
@@ -145,6 +157,13 @@ public struct AddItemFeature {
 
             case let .modeChanged(newMode):
                 state.mode = newMode
+                if state.editingOriginalItem == nil {
+                    state.name = ""
+                    state.address = ""
+                    state.resolvedLat = nil
+                    state.resolvedLng = nil
+                    state.resolvedPlaceId = nil
+                }
                 guard newMode == .reuse, state.reuseCandidates.isEmpty, !state.isLoadingReuseCandidates else { return .none }
                 state.isLoadingReuseCandidates = true
                 return .run { [tripID = state.tripID] send in
@@ -166,6 +185,10 @@ public struct AddItemFeature {
                 state.errorMessage = error.localizedDescription
                 return .none
 
+            case let .mapLocationPicked(place):
+                state.applyResolvedPlace(place)
+                return .none
+
             case let .reuseCandidateTapped(item):
                 state.name = item.name
                 state.itemType = item.itemType
@@ -181,6 +204,7 @@ public struct AddItemFeature {
                     state.linkResolveErrorMessage = "구글맵 공유 링크를 붙여넣어주세요."
                     return .none
                 }
+                FlowneyLog.debug("링크 해석 시작 url=\(trimmed)", category: .addItem)
                 state.linkURLText = trimmed
                 state.linkResolveErrorMessage = nil
                 state.isResolvingLink = true
@@ -189,11 +213,13 @@ public struct AddItemFeature {
                         let place = try await placeResolverAPIClient.resolve(trimmed)
                         await send(.resolveLinkResponse(.success(place)))
                     } catch {
+                        FlowneyLog.error("링크 해석 실패: \(error)", category: .addItem)
                         await send(.resolveLinkResponse(.failure(error)))
                     }
                 }
 
             case let .resolveLinkResponse(.success(place)):
+                FlowneyLog.debug("링크 해석 성공 name=\(place.name) lat=\(String(describing: place.lat)) lng=\(String(describing: place.lng))", category: .addItem)
                 state.isResolvingLink = false
                 state.linkResolveErrorMessage = nil
                 state.name = place.name
@@ -212,6 +238,12 @@ public struct AddItemFeature {
                 guard !state.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                     state.errorMessage = "이름을 입력해주세요."
                     return .none
+                }
+                if state.editingOriginalItem == nil {
+                    guard state.resolvedLat != nil, state.resolvedLng != nil else {
+                        state.errorMessage = "위치를 선택해주세요."
+                        return .none
+                    }
                 }
                 guard state.costAmountText.isEmpty || (state.costCategory != nil && state.paymentStatus != nil) else {
                     state.errorMessage = "금액을 입력했으면 카테고리와 결제 상태도 선택해주세요."
@@ -246,20 +278,15 @@ public struct AddItemFeature {
                     original.lat = state.resolvedLat
                     original.lng = state.resolvedLng
                     original.placeId = state.resolvedPlaceId
-                    if state.mode == .link || state.mode == .reuse, state.resolvedLat != nil {
-                        original.source = state.mode == .reuse ? .reuse : .link
+                    if state.resolvedLat != nil {
+                        original.source = state.mode.itemSource
                         original.sourceURL = state.mode == .link ? state.linkURLText : nil
                     }
                     original.startTime = startTimeString
-                    original.costAmount = costAmount
-                    original.costCurrency = costCurrency
-                    original.costAmountKRW = costAmountKRW
-                    original.costCategory = state.costCategory
-                    original.paymentStatus = state.paymentStatus
                     original.notes = notes
                     item = original
                 } else {
-                    let hasResolvedLocation = (state.mode == .link || state.mode == .reuse) && state.resolvedLat != nil && state.resolvedLng != nil
+                    let hasResolvedLocation = state.resolvedLat != nil && state.resolvedLng != nil
                     item = ItineraryItem(
                         id: uuid(),
                         tripId: state.tripID,
@@ -272,31 +299,52 @@ public struct AddItemFeature {
                         lat: hasResolvedLocation ? state.resolvedLat : nil,
                         lng: hasResolvedLocation ? state.resolvedLng : nil,
                         address: address,
-                        source: state.mode == .reuse ? .reuse : (hasResolvedLocation ? .link : .manual),
+                        source: hasResolvedLocation ? state.mode.itemSource : .manual,
                         sourceURL: state.mode == .link && hasResolvedLocation ? state.linkURLText : nil,
                         startTime: startTimeString,
-                        costAmount: costAmount,
-                        costCurrency: costCurrency,
-                        costAmountKRW: costAmountKRW,
-                        costCategory: state.costCategory,
-                        paymentStatus: state.paymentStatus,
                         notes: notes
                     )
                 }
 
                 let isEditing = state.editingOriginalItem != nil
+                let hasCost = !state.costAmountText.isEmpty
+                let costCategory = state.costCategory
+                let paymentStatus = state.paymentStatus
+                FlowneyLog.debug("일정 항목 저장 시작 isEditing=\(isEditing) name=\(item.name)", category: .addItem)
                 return .run { send in
                     do {
                         let saved = isEditing
                             ? try await itineraryRepository.updateItem(item)
                             : try await itineraryRepository.createItem(item)
+                        if hasCost {
+                            let entry = BudgetEntry(
+                                id: saved.id,
+                                tripId: saved.tripId,
+                                name: saved.name,
+                                costAmount: costAmount,
+                                costCurrency: costCurrency,
+                                costAmountKRW: costAmountKRW,
+                                costCategory: costCategory,
+                                paymentStatus: paymentStatus,
+                                linkedItemId: saved.id
+                            )
+                            do {
+                                _ = try await budgetEntryRepository.upsertEntry(entry)
+                            } catch {
+                                FlowneyLog.error("일정 연결 예산 저장 실패 id=\(saved.id): \(error)", category: .addItem)
+                            }
+                        } else {
+                            try? await budgetEntryRepository.deleteEntry(saved.id)
+                        }
                         await send(.saveResponse(.success(saved)))
                     } catch {
+                        FlowneyLog.error("일정 항목 저장 실패: \(error)", category: .addItem)
                         await send(.saveResponse(.failure(error)))
                     }
                 }
 
             case let .saveResponse(.success(item)):
+                FlowneyLog.debug("일정 항목 저장 성공 id=\(item.id)", category: .addItem)
                 state.isSaving = false
                 state.savedItem = item
                 return .send(.delegate(.itemAdded(item)))

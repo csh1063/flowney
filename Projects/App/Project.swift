@@ -2,10 +2,10 @@ import ProjectDescription
 import ProjectDescriptionHelpers
 
 let project = Project(
-    name: "Waypin",
+    name: "Flowney",
     targets: [
         .target(
-            name: "Waypin",
+            name: "Flowney",
             destinations: Constants.destinations,
             product: .app,
             bundleId: Constants.bundleIdPrefix,
@@ -37,21 +37,22 @@ let project = Project(
             resources: [
                 "Resources/**",
             ],
-            entitlements: .file(path: "Waypin.entitlements"),
+            entitlements: .file(path: "Flowney.entitlements"),
             dependencies: [
-                WaypinModule.root.dependency,
-                WaypinModule.designSystem.dependency,
+                FlowneyModule.root.dependency,
+                FlowneyModule.designSystem.dependency,
                 .external(name: "ComposableArchitecture"),
                 .external(name: "GoogleSignIn"),
                 .external(name: "GoogleSignInSwift"),
                 .external(name: "GoogleMaps"),
-                .project(target: "WaypinShareExtension", path: .relativeToRoot("Projects/ShareExtension")),
+                .project(target: "FlowneyShareExtension", path: .relativeToRoot("Projects/ShareExtension")),
             ],
             settings: .settings(
                 base: [
                     "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
                     "DEVELOPMENT_TEAM": .string(Constants.developmentTeam),
                     "CODE_SIGN_STYLE": "Automatic",
+                    "OTHER_LDFLAGS": ["-ObjC"],
                 ],
                 configurations: [
                     .debug(name: .debug, xcconfig: "Config.xcconfig"),

@@ -14,16 +14,16 @@ struct DayTabView: View {
         Button(action: onTapped) {
             VStack(spacing: 2) {
                 Text("\(day.dayIndex)일차")
-                    .font(WaypinFont.caption)
+                    .font(FlowneyFont.caption)
                 Text(dateLabel)
-                    .font(WaypinFont.bodyEmphasis)
+                    .font(FlowneyFont.bodyEmphasis)
                 Text(weatherIcon ?? " ")
                     .font(.caption2)
             }
             .padding(.vertical, 8)
             .frame(maxWidth: .infinity)
-            .background(isSelected ? WaypinTheme.fill : WaypinTheme.divider)
-            .foregroundStyle(isSelected ? WaypinTheme.fillLabel : WaypinTheme.textPrimary)
+            .background(isSelected ? FlowneyTheme.fill : FlowneyTheme.divider)
+            .foregroundStyle(isSelected ? FlowneyTheme.fillLabel : FlowneyTheme.textPrimary)
             .clipShape(RoundedRectangle(cornerRadius: 10))
             .padding(.horizontal, 3)
         }

@@ -1,7 +1,7 @@
 import ProjectDescription
 import ProjectDescriptionHelpers
 
-let project = waypinModuleProject(
+let project = flowneyModuleProject(
     moduleName: "Models",
     bundleIdSuffix: "core.models"
 )

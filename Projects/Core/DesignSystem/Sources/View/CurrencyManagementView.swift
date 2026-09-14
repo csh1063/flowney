@@ -41,26 +41,26 @@ public struct CurrencyManagementView: View {
                     Button {
                         toggle(currency.code)
                     } label: {
-                        HStack(spacing: WaypinSpacing.sm) {
+                        HStack(spacing: FlowneySpacing.sm) {
                             Text(currency.code)
-                                .font(WaypinFont.bodyEmphasis)
-                                .foregroundStyle(WaypinTheme.textPrimary)
+                                .font(FlowneyFont.bodyEmphasis)
+                                .foregroundStyle(FlowneyTheme.textPrimary)
                             Text(currency.name)
-                                .font(WaypinFont.caption)
-                                .foregroundStyle(WaypinTheme.textSecondary)
+                                .font(FlowneyFont.caption)
+                                .foregroundStyle(FlowneyTheme.textSecondary)
                             Spacer()
                             if selected.contains(currency.code) {
                                 Image(systemName: "checkmark")
-                                    .foregroundStyle(WaypinTheme.accent)
+                                    .foregroundStyle(FlowneyTheme.accent)
                             }
                         }
                     }
-                    .listRowBackground(WaypinTheme.surface)
+                    .listRowBackground(FlowneyTheme.surface)
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
             }
-            .background(WaypinTheme.background)
+            .background(FlowneyTheme.background)
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "통화 검색")
             .navigationTitle("통화 관리")
             .navigationBarTitleDisplayMode(.inline)
@@ -88,33 +88,33 @@ public struct CurrencyManagementView: View {
 
     private var selectedSummaryRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: WaypinSpacing.sm) {
+            HStack(spacing: FlowneySpacing.sm) {
                 pill(code: "KRW", removable: false)
                 ForEach(orderedSelectedCurrencies, id: \.self) { code in
                     pill(code: code, removable: true)
                 }
             }
-            .padding(WaypinSpacing.lg)
+            .padding(FlowneySpacing.lg)
         }
-        .background(WaypinTheme.surface)
+        .background(FlowneyTheme.surface)
     }
 
     private func pill(code: String, removable: Bool) -> some View {
         Button {
             if removable { toggle(code) }
         } label: {
-            HStack(spacing: WaypinSpacing.xs) {
+            HStack(spacing: FlowneySpacing.xs) {
                 Text(code)
-                    .font(WaypinFont.caption.weight(.semibold))
+                    .font(FlowneyFont.caption.weight(.semibold))
                 if removable {
                     Image(systemName: "xmark")
                         .font(.caption2)
                 }
             }
-            .padding(.horizontal, WaypinSpacing.md)
-            .padding(.vertical, WaypinSpacing.xs)
-            .background(WaypinTheme.accent, in: Capsule())
-            .foregroundStyle(WaypinTheme.accentLabel)
+            .padding(.horizontal, FlowneySpacing.md)
+            .padding(.vertical, FlowneySpacing.xs)
+            .background(FlowneyTheme.accent, in: Capsule())
+            .foregroundStyle(FlowneyTheme.accentLabel)
         }
         .buttonStyle(.plain)
         .disabled(!removable)
