@@ -103,8 +103,18 @@ final class CachedRouteLegRecord {
 enum RouteCacheContainer {
     static let shared: ModelContainer = {
         let schema = Schema([CachedRouteLegRecord.self])
-        let configuration = ModelConfiguration(schema: schema)
-        return try! ModelContainer(for: schema, configurations: [configuration])
+        if let container = try? ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema)]) {
+            return container
+        }
+        // On-disk store failed (schema mismatch, corrupted store, etc). Fall back to an
+        // in-memory container so route caching degrades gracefully instead of crashing the app.
+        guard let inMemory = try? ModelContainer(
+            for: schema,
+            configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)]
+        ) else {
+            fatalError("Failed to create RouteCacheContainer even in-memory")
+        }
+        return inMemory
     }()
 }
 

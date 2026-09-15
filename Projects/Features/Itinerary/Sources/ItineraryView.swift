@@ -148,14 +148,7 @@ public struct ItineraryView: View {
         }
         .onChange(of: store.addItemFlowRequest) { _, request in
             guard let request else { return }
-            let wasListSheetPresented = isListSheetPresented
-            isListSheetPresented = false
-            Task { @MainActor in
-                if wasListSheetPresented {
-                    try? await Task.sleep(for: .milliseconds(350))
-                }
-                addItemFlowStore = Store(initialState: request) { AddItemFlowFeature() }
-            }
+            addItemFlowStore = Store(initialState: request) { AddItemFlowFeature() }
             store.send(.addItemRequestConsumed)
         }
         .sheet(isPresented: $isListSheetPresented) {
@@ -167,22 +160,13 @@ public struct ItineraryView: View {
         }
         .sheet(
             isPresented: Binding(
-                get: { addItemFlowStore != nil },
+                get: { addItemFlowStore != nil && !isListSheetPresented },
                 set: { isPresented in
                     if !isPresented { addItemFlowStore = nil }
                 }
             )
         ) {
-            if let addItemFlowStore {
-                AddItemFlowView(
-                    store: addItemFlowStore,
-                    onItemAdded: { item in
-                        store.send(.itemAdded(item))
-                        self.addItemFlowStore = nil
-                    },
-                    onCancelled: { self.addItemFlowStore = nil }
-                )
-            }
+            addItemFlowSheetContent
         }
         .sheet(
             isPresented: Binding(
@@ -475,9 +459,33 @@ public struct ItineraryView: View {
                 Text("\(item.name)의 위치가 여행에 등록된 나라면 그냥 둬도 되고, 주소가 잘못됐으면 삭제하세요.")
             }
         }
+        .sheet(
+            isPresented: Binding(
+                get: { addItemFlowStore != nil && isListSheetPresented },
+                set: { isPresented in
+                    if !isPresented { addItemFlowStore = nil }
+                }
+            )
+        ) {
+            addItemFlowSheetContent
+        }
     }
 
     private var allViewRowID: String { "__all__" }
+
+    @ViewBuilder
+    private var addItemFlowSheetContent: some View {
+        if let addItemFlowStore {
+            AddItemFlowView(
+                store: addItemFlowStore,
+                onItemAdded: { item in
+                    store.send(.itemAdded(item))
+                    self.addItemFlowStore = nil
+                },
+                onCancelled: { self.addItemFlowStore = nil }
+            )
+        }
+    }
 }
 
 extension UIApplication {

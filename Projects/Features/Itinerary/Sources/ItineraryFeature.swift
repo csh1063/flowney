@@ -174,6 +174,29 @@ public struct ItineraryFeature {
 
     public init() {}
 
+    private enum ReorderCancelID: Hashable {
+        case persist(TripDay.ID)
+    }
+
+    private func reorderPersistEffect(
+        dayID: TripDay.ID,
+        updates: [ItemReorderUpdate],
+        items: [ItineraryItem]
+    ) -> Effect<Action> {
+        .run { [itineraryRepository, updates, items] send in
+            do {
+                try await itineraryRepository.reorderItems(updates)
+                for item in items {
+                    _ = try? await itineraryRepository.updateItem(item)
+                }
+                await send(.reorderPersistResponse(.success(())))
+            } catch {
+                await send(.reorderPersistResponse(.failure(error)))
+            }
+        }
+        .cancellable(id: ReorderCancelID.persist(dayID), cancelInFlight: true)
+    }
+
     public var body: some ReducerOf<Self> {
         Reduce { state, action in
             switch action {
@@ -470,17 +493,7 @@ public struct ItineraryFeature {
                 let updates = items.map {
                     ItemReorderUpdate(id: $0.id, dayId: $0.dayId, sortOrder: $0.sortOrder)
                 }
-                return .run { [itineraryRepository, items] send in
-                    do {
-                        try await itineraryRepository.reorderItems(updates)
-                        for item in items {
-                            _ = try? await itineraryRepository.updateItem(item)
-                        }
-                        await send(.reorderPersistResponse(.success(())))
-                    } catch {
-                        await send(.reorderPersistResponse(.failure(error)))
-                    }
-                }
+                return reorderPersistEffect(dayID: dayID, updates: updates, items: Array(items))
 
             case let .itemDroppedOnDay(itemID, targetDayID):
                 guard
@@ -504,32 +517,20 @@ public struct ItineraryFeature {
                 state.itemsByDay[targetDayID, default: []].append(item)
                 state.legsByDay[targetDayID] = []
 
-                var updates = [ItemReorderUpdate(id: item.id, dayId: item.dayId, sortOrder: item.sortOrder)]
-                var itemsToPersist = [item]
-                if let sourceItems = state.itemsByDay[sourceDayID] {
-                    updates.append(
-                        contentsOf: sourceItems.map {
-                            ItemReorderUpdate(id: $0.id, dayId: $0.dayId, sortOrder: $0.sortOrder)
-                        }
-                    )
-                    itemsToPersist.append(contentsOf: sourceItems)
+                let targetUpdate = ItemReorderUpdate(id: item.id, dayId: item.dayId, sortOrder: item.sortOrder)
+                var effects = [reorderPersistEffect(dayID: targetDayID, updates: [targetUpdate], items: [item])]
+
+                if let sourceItems = state.itemsByDay[sourceDayID], !sourceItems.isEmpty {
+                    let sourceUpdates = sourceItems.map {
+                        ItemReorderUpdate(id: $0.id, dayId: $0.dayId, sortOrder: $0.sortOrder)
+                    }
+                    effects.append(reorderPersistEffect(dayID: sourceDayID, updates: sourceUpdates, items: Array(sourceItems)))
                 }
 
-                return .run { [itineraryRepository, updates, itemsToPersist] send in
-                    do {
-                        try await itineraryRepository.reorderItems(updates)
-                        for item in itemsToPersist {
-                            _ = try? await itineraryRepository.updateItem(item)
-                        }
-                        await send(.reorderPersistResponse(.success(())))
-                    } catch {
-                        await send(.reorderPersistResponse(.failure(error)))
-                    }
-                }
+                return .merge(effects)
 
             case let .itemsReorderedAcrossDays(newItemsByDay):
-                var updates: [ItemReorderUpdate] = []
-                var itemsToPersist: [ItineraryItem] = []
+                var effects: [Effect<Action>] = []
 
                 for (dayID, items) in newItemsByDay {
                     var reindexed = items
@@ -548,23 +549,11 @@ public struct ItineraryFeature {
                     }
                     state.itemsByDay[dayID] = IdentifiedArrayOf(uniqueElements: reindexed)
                     state.legsByDay[dayID] = []
-                    updates.append(
-                        contentsOf: reindexed.map { ItemReorderUpdate(id: $0.id, dayId: $0.dayId, sortOrder: $0.sortOrder) }
-                    )
-                    itemsToPersist.append(contentsOf: reindexed)
+                    let updates = reindexed.map { ItemReorderUpdate(id: $0.id, dayId: $0.dayId, sortOrder: $0.sortOrder) }
+                    effects.append(reorderPersistEffect(dayID: dayID, updates: updates, items: reindexed))
                 }
 
-                return .run { [itineraryRepository, updates, itemsToPersist] send in
-                    do {
-                        try await itineraryRepository.reorderItems(updates)
-                        for item in itemsToPersist {
-                            _ = try? await itineraryRepository.updateItem(item)
-                        }
-                        await send(.reorderPersistResponse(.success(())))
-                    } catch {
-                        await send(.reorderPersistResponse(.failure(error)))
-                    }
-                }
+                return .merge(effects)
 
             case .reorderPersistResponse:
                 return .none

@@ -9,6 +9,7 @@ let project = flowneyModuleProject(
         FlowneyModule.designSystem.dependency,
         FlowneyModule.apiClient.dependency,
         FlowneyModule.auth.dependency,
+        FlowneyModule.addItem.dependency,
         FlowneyModule.tripList.dependency,
         FlowneyModule.tripEdit.dependency,
         FlowneyModule.itinerary.dependency,

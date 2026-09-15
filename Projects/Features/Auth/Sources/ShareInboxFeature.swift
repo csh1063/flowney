@@ -1,8 +1,18 @@
-import AddItem
 import APIClient
 import ComposableArchitecture
 import Foundation
 import Models
+
+/// Raw data needed to open the add-item flow for an accepted share. Kept free of any
+/// `AddItem` module types so the Auth module doesn't need to depend on AddItem — the
+/// caller (Root) is responsible for turning this into an `AddItemFlowFeature.State`.
+public struct AddItemFromShareRequest: Equatable {
+    public let shareID: PendingShare.ID
+    public let defaultTripID: Trip.ID?
+    public let linkURLText: String
+    public let prefillName: String
+    public let prefillResolvedPlace: ResolvedPlace?
+}
 
 @Reducer
 public struct ShareInboxFeature {
@@ -11,14 +21,8 @@ public struct ShareInboxFeature {
         public var shares: IdentifiedArrayOf<PendingShare> = []
         public var errorMessage: String?
 
-        public var previews: [PendingShare.ID: LinkPreview] = [:]
-        public var previewFailedIDs: Set<PendingShare.ID> = []
-
         public var resolvedPlaces: [PendingShare.ID: ResolvedPlace] = [:]
         public var resolveFailedIDs: Set<PendingShare.ID> = []
-
-        public var addItemFlowRequest: AddItemFlowFeature.State?
-        public var addItemFlowRequestShareID: PendingShare.ID?
 
         public var defaultTripID: Trip.ID?
 
@@ -30,15 +34,11 @@ public struct ShareInboxFeature {
     public enum Action {
         case onAppear
         case rowAppeared(PendingShare)
-        case previewResponse(PendingShare.ID, Result<LinkPreview, any Error>)
         case resolveResponse(PendingShare.ID, Result<ResolvedPlace, any Error>)
-        case rowTapped(PendingShare)
         case deleteShare(PendingShare.ID)
-        case addItemFlowRequestConsumed
         case itemAdded(PendingShare.ID)
     }
 
-    @Dependency(\.linkPreviewClient) var linkPreviewClient
     @Dependency(\.placeResolverAPIClient) var placeResolverAPIClient
 
     public init() {}
@@ -52,36 +52,17 @@ public struct ShareInboxFeature {
                 return .none
 
             case let .rowAppeared(share):
-                var effects: [Effect<Action>] = []
-                if state.previews[share.id] == nil, !state.previewFailedIDs.contains(share.id) {
-                    effects.append(.run { send in
-                        do {
-                            let preview = try await linkPreviewClient.fetch(share.urlString)
-                            await send(.previewResponse(share.id, .success(preview)))
-                        } catch {
-                            await send(.previewResponse(share.id, .failure(error)))
-                        }
-                    })
+                guard state.resolvedPlaces[share.id] == nil, !state.resolveFailedIDs.contains(share.id) else {
+                    return .none
                 }
-                if state.resolvedPlaces[share.id] == nil, !state.resolveFailedIDs.contains(share.id) {
-                    effects.append(.run { send in
-                        do {
-                            let place = try await placeResolverAPIClient.resolve(share.urlString)
-                            await send(.resolveResponse(share.id, .success(place)))
-                        } catch {
-                            await send(.resolveResponse(share.id, .failure(error)))
-                        }
-                    })
+                return .run { send in
+                    do {
+                        let place = try await placeResolverAPIClient.resolve(share.urlString)
+                        await send(.resolveResponse(share.id, .success(place)))
+                    } catch {
+                        await send(.resolveResponse(share.id, .failure(error)))
+                    }
                 }
-                return .merge(effects)
-
-            case let .previewResponse(id, .success(preview)):
-                state.previews[id] = preview
-                return .none
-
-            case let .previewResponse(id, .failure):
-                state.previewFailedIDs.insert(id)
-                return .none
 
             case let .resolveResponse(id, .success(place)):
                 state.resolvedPlaces[id] = place
@@ -91,30 +72,14 @@ public struct ShareInboxFeature {
                 state.resolveFailedIDs.insert(id)
                 return .none
 
-            case let .rowTapped(share):
-                state.addItemFlowRequest = AddItemFlowFeature.State(
-                    defaultTripID: state.defaultTripID,
-                    mode: .link,
-                    linkURLText: share.urlString,
-                    prefillName: state.previews[share.id]?.name ?? "",
-                    prefillResolvedPlace: state.resolvedPlaces[share.id]
-                )
-                state.addItemFlowRequestShareID = share.id
-                return .none
-
             case let .deleteShare(id):
                 state.shares.remove(id: id)
                 PendingShareStore.remove(id: id)
                 return .none
 
-            case .addItemFlowRequestConsumed:
-                state.addItemFlowRequest = nil
-                return .none
-
             case let .itemAdded(shareID):
                 PendingShareStore.markAdded(id: shareID)
                 state.shares[id: shareID]?.hasBeenAdded = true
-                state.addItemFlowRequestShareID = nil
                 return .none
             }
         }

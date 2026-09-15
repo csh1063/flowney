@@ -22,6 +22,7 @@ struct MemoItemRowView: View {
                     Image(systemName: item.isDone ? "checkmark.circle.fill" : "circle")
                         .foregroundStyle(item.isDone ? FlowneyTheme.accent : FlowneyTheme.textSecondary)
                         .font(.system(size: 20))
+                        .frame(width: 40, height: 40)
                 }
                 .buttonStyle(.plain)
             } else {

@@ -311,7 +311,7 @@ private struct ListItemRowView: View {
                         .background(FlowneyTheme.fill, in: Circle())
                 }
                 .buttonStyle(.plain)
-                .frame(width: 24, height: 24)
+                .frame(width: 40, height: 40)
             }
 
             VStack(alignment: .trailing, spacing: FlowneySpacing.xs / 2) {

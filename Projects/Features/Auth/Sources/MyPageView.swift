@@ -10,6 +10,7 @@ public struct MyPageView: View {
     let currentTripID: Trip.ID?
     @Binding var isSubpagePresented: Bool
     @Binding var autoOpenShareInbox: Bool
+    let onAddItemRequested: (AddItemFromShareRequest, _ onAdded: @escaping () -> Void) -> Void
 
     @State private var isAccountInfoPresented = false
     @State private var shareInboxStore: StoreOf<ShareInboxFeature>?
@@ -20,12 +21,14 @@ public struct MyPageView: View {
         store: StoreOf<AuthFeature>,
         currentTripID: Trip.ID? = nil,
         isSubpagePresented: Binding<Bool> = .constant(false),
-        autoOpenShareInbox: Binding<Bool> = .constant(false)
+        autoOpenShareInbox: Binding<Bool> = .constant(false),
+        onAddItemRequested: @escaping (AddItemFromShareRequest, _ onAdded: @escaping () -> Void) -> Void = { _, _ in }
     ) {
         self.store = store
         self.currentTripID = currentTripID
         self._isSubpagePresented = isSubpagePresented
         self._autoOpenShareInbox = autoOpenShareInbox
+        self.onAddItemRequested = onAddItemRequested
     }
 
     public var body: some View {
@@ -142,7 +145,7 @@ public struct MyPageView: View {
             )
         ) {
             if let shareInboxStore {
-                ShareInboxView(store: shareInboxStore)
+                ShareInboxView(store: shareInboxStore, onAddItemRequested: onAddItemRequested)
                     .onAppear { isSubpagePresented = true }
                     .onDisappear { isSubpagePresented = false }
             }

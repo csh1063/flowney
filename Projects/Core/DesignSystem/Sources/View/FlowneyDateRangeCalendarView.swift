@@ -48,6 +48,7 @@ public struct FlowneyDateRangeCalendarView: View {
                 navigateMonth(by: -1)
             } label: {
                 Image(systemName: "chevron.left")
+                    .frame(width: 40, height: 40)
             }
             Spacer()
             Text(monthTitle)
@@ -57,6 +58,7 @@ public struct FlowneyDateRangeCalendarView: View {
                 navigateMonth(by: 1)
             } label: {
                 Image(systemName: "chevron.right")
+                    .frame(width: 40, height: 40)
             }
         }
         .foregroundStyle(FlowneyTheme.textPrimary)

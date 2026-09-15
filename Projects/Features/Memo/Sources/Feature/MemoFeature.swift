@@ -15,7 +15,7 @@ public struct MemoFeature {
         public var composeText: String = ""
         public var composeKind: MemoItemKind = .note
         public var composeDueDate: Date?
-        public var composeHasNoDueDate: Bool = false
+        public var composeHasNoDueDate: Bool = true
 
         public var editingDueDateForItemID: MemoItem.ID?
 
@@ -117,7 +117,7 @@ public struct MemoFeature {
                 state.items.append(item)
                 state.composeText = ""
                 state.composeDueDate = nil
-                state.composeHasNoDueDate = false
+                state.composeHasNoDueDate = true
 
                 return .run { [memoItemRepository, notificationScheduler, item] send in
                     do {

@@ -51,6 +51,11 @@ struct RouteMapView: UIViewRepresentable {
         Coordinator()
     }
 
+    static func dismantleUIView(_ mapView: GMSMapView, coordinator: Coordinator) {
+        coordinator.engine?.stop()
+        coordinator.engine = nil
+    }
+
     @MainActor
     final class Coordinator: NSObject, @preconcurrency GMSMapViewDelegate {
         var mapView: GMSMapView?
@@ -185,6 +190,7 @@ struct RouteMapView: UIViewRepresentable {
             case .airport: return UIColor(hex: "#4A6FA5")
             case .sight: return UIColor(hex: "#2F8F5B")
             case .meal: return UIColor(hex: "#F5A623")
+            case .cafe: return UIColor(hex: "#8B5E3C")
             case .lodge: return FlowneyTheme.brandGoldUIColor
             case .transport: return UIColor(hex: "#0072CE")
             case .activity: return UIColor(hex: "#8E44AD")

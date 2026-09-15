@@ -115,6 +115,7 @@ public struct MemoView: View {
                 } label: {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 24))
+                        .frame(width: 40, height: 40)
                 }
                 .disabled(store.composeText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }

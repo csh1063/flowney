@@ -10,6 +10,7 @@ struct AddItemFormView: View {
     @State private var isCurrencyManagementPresented = false
     @State private var isMapPickerPresented = false
     @State private var tripCurrencies: [String] = []
+    @FocusState private var isTextFieldFocused: Bool
 
     private var showsDetailFields: Bool {
         store.editingOriginalItem != nil || store.resolvedLat != nil
@@ -21,7 +22,10 @@ struct AddItemFormView: View {
                 FlowneySegmentedControl(
                     selection: Binding(
                         get: { store.mode },
-                        set: { store.send(.modeChanged($0)) }
+                        set: {
+                            isTextFieldFocused = false
+                            store.send(.modeChanged($0))
+                        }
                     ),
                     options: AddItemFeature.Mode.allCases,
                     label: \.displayName
@@ -36,9 +40,15 @@ struct AddItemFormView: View {
                                 .font(FlowneyFont.caption)
                                 .foregroundStyle(FlowneyTheme.textSecondary)
                         }
-                        Button("위치 다시 찾기") { isMapPickerPresented = true }
+                        Button("위치 다시 찾기") {
+                            isTextFieldFocused = false
+                            isMapPickerPresented = true
+                        }
                     } else {
-                        Button("지도에서 위치 찾기") { isMapPickerPresented = true }
+                        Button("지도에서 위치 찾기") {
+                            isTextFieldFocused = false
+                            isMapPickerPresented = true
+                        }
                     }
                 }
             }
@@ -49,6 +59,7 @@ struct AddItemFormView: View {
                         TextField("구글맵에서 공유한 링크 붙여넣기", text: $store.linkURLText)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
+                            .focused($isTextFieldFocused)
                         if !store.linkURLText.isEmpty {
                             Button {
                                 store.linkURLText = ""
@@ -61,8 +72,11 @@ struct AddItemFormView: View {
                         if store.isResolvingLink {
                             ProgressView()
                         } else {
-                            Button("가져오기") { store.send(.resolveLinkButtonTapped) }
-                                .disabled(store.linkURLText.isEmpty)
+                            Button("가져오기") {
+                                isTextFieldFocused = false
+                                store.send(.resolveLinkButtonTapped)
+                            }
+                            .disabled(store.linkURLText.isEmpty)
                         }
                     }
                     if let linkResolveErrorMessage = store.linkResolveErrorMessage {
@@ -88,6 +102,7 @@ struct AddItemFormView: View {
                     } else {
                         ForEach(store.dedupedReuseCandidates) { candidate in
                             Button {
+                                isTextFieldFocused = false
                                 store.send(.reuseCandidateTapped(candidate))
                             } label: {
                                 HStack {
@@ -117,12 +132,14 @@ struct AddItemFormView: View {
             if showsDetailFields {
                 Section("일정") {
                     TextField("이름 (예: 루브르 박물관, 점심 식사)", text: $store.name)
+                        .focused($isTextFieldFocused)
 
                     Picker("종류", selection: $store.itemType) {
                         ForEach(ItemType.allCases, id: \.self) { type in
                             Text(type.displayName).tag(type)
                         }
                     }
+                    .onChange(of: store.itemType) { isTextFieldFocused = false }
 
                     Picker("이동수단", selection: transportBucketBinding) {
                         ForEach(TransportBucket.allCases, id: \.self) { bucket in
@@ -132,11 +149,13 @@ struct AddItemFormView: View {
                     .pickerStyle(.segmented)
 
                     Toggle("시간 지정", isOn: $store.hasStartTime)
+                        .onChange(of: store.hasStartTime) { isTextFieldFocused = false }
                     if store.hasStartTime {
                         DatePicker("시작 시간", selection: $store.startTime, displayedComponents: .hourAndMinute)
                     }
 
                     TextField("주소/메모용 위치 (선택)", text: $store.address)
+                        .focused($isTextFieldFocused)
                 }
 
                 Section("비용") {
@@ -147,13 +166,17 @@ struct AddItemFormView: View {
                         costAmountKRWText: $store.costAmountKRWText,
                         costCategory: $store.costCategory,
                         paymentStatus: $store.paymentStatus,
-                        onManageCurrenciesTapped: { isCurrencyManagementPresented = true }
+                        onManageCurrenciesTapped: {
+                            isTextFieldFocused = false
+                            isCurrencyManagementPresented = true
+                        }
                     )
                 }
 
                 Section("메모") {
                     TextField("메모", text: $store.notes, axis: .vertical)
                         .lineLimit(3...6)
+                        .focused($isTextFieldFocused)
                 }
 
                 if let errorMessage = store.errorMessage {
@@ -235,6 +258,7 @@ struct AddItemFormView: View {
                 }
             },
             set: { newValue in
+                isTextFieldFocused = false
                 let mode: TransportMode? = switch newValue {
                 case .walk: .walk
                 case .transit: nil

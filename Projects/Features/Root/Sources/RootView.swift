@@ -1,3 +1,4 @@
+import AddItem
 import APIClient
 import AuthFeature
 import Budget
@@ -37,6 +38,8 @@ public struct RootView: View {
     @State private var selectedTab: Tab = .map
     @State private var isMyPageSubpagePresented = false
     @State private var shouldAutoOpenShareInbox = false
+    @State private var addItemFlowStore: StoreOf<AddItemFlowFeature>?
+    @State private var pendingAddItemCompletion: (() -> Void)?
     @Environment(\.scenePhase) private var scenePhase
 
     public init(store: StoreOf<AppFeature>) {
@@ -122,6 +125,32 @@ public struct RootView: View {
                 }
             }
             .ignoresSafeArea(.keyboard, edges: .bottom)
+            .sheet(
+                isPresented: Binding(
+                    get: { addItemFlowStore != nil },
+                    set: { isPresented in
+                        if !isPresented {
+                            addItemFlowStore = nil
+                            pendingAddItemCompletion = nil
+                        }
+                    }
+                )
+            ) {
+                if let addItemFlowStore {
+                    AddItemFlowView(
+                        store: addItemFlowStore,
+                        onItemAdded: { _ in
+                            pendingAddItemCompletion?()
+                            pendingAddItemCompletion = nil
+                            self.addItemFlowStore = nil
+                        },
+                        onCancelled: {
+                            pendingAddItemCompletion = nil
+                            self.addItemFlowStore = nil
+                        }
+                    )
+                }
+            }
     }
     
     @ViewBuilder
@@ -285,7 +314,19 @@ public struct RootView: View {
             store: store.scope(state: \.auth, action: \.auth),
             currentTripID: currentTrip?.id,
             isSubpagePresented: $isMyPageSubpagePresented,
-            autoOpenShareInbox: $shouldAutoOpenShareInbox
+            autoOpenShareInbox: $shouldAutoOpenShareInbox,
+            onAddItemRequested: { request, onAdded in
+                pendingAddItemCompletion = onAdded
+                addItemFlowStore = Store(
+                    initialState: AddItemFlowFeature.State(
+                        defaultTripID: request.defaultTripID,
+                        mode: .link,
+                        linkURLText: request.linkURLText,
+                        prefillName: request.prefillName,
+                        prefillResolvedPlace: request.prefillResolvedPlace
+                    )
+                ) { AddItemFlowFeature() }
+            }
         )
     }
 }

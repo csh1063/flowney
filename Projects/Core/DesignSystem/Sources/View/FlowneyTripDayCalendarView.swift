@@ -134,7 +134,7 @@ public struct FlowneyTripDayCalendarView: View {
                 Text("\(Self.calendar.component(.day, from: day.dayDate))")
                     .font(FlowneyFont.bodyEmphasis)
                     .foregroundStyle(isSelected ? FlowneyTheme.fillLabel : FlowneyTheme.textPrimary)
-                    .frame(width: 36, height: 36)
+                    .frame(width: 40, height: 40)
                     .background(isSelected ? FlowneyTheme.fill : Color.clear, in: Circle())
                     .overlay(
                         Circle()

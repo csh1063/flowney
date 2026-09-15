@@ -102,10 +102,11 @@ public struct BudgetFeature {
         }
 
         private func currencyTotals(for lines: [BudgetEntry]) -> [CurrencyTotal] {
-            let grouped = Dictionary(
-                grouping: lines.filter { $0.costCurrency != nil && $0.costAmount != nil },
-                by: { $0.costCurrency! }
-            )
+            let pairs = lines.compactMap { line -> (String, BudgetEntry)? in
+                guard let currency = line.costCurrency, line.costAmount != nil else { return nil }
+                return (currency, line)
+            }
+            let grouped = Dictionary(grouping: pairs, by: \.0).mapValues { $0.map(\.1) }
             return grouped
                 .map { currency, lines in
                     CurrencyTotal(currency: currency, total: lines.reduce(Decimal(0)) { $0 + ($1.costAmount ?? 0) })
@@ -162,14 +163,15 @@ public struct BudgetFeature {
         }
 
         public var appliedExchangeRates: [AppliedExchangeRate] {
-            let grouped = Dictionary(
-                grouping: lines.filter {
-                    ($0.costCurrency?.uppercased() ?? "KRW") != "KRW"
-                        && $0.costAmount != nil && $0.costAmount != 0
-                        && $0.costAmountKRW != nil
-                },
-                by: { $0.costCurrency! }
-            )
+            let pairs = lines.compactMap { line -> (String, BudgetEntry)? in
+                guard
+                    let currency = line.costCurrency, currency.uppercased() != "KRW",
+                    let amount = line.costAmount, amount != 0,
+                    line.costAmountKRW != nil
+                else { return nil }
+                return (currency, line)
+            }
+            let grouped = Dictionary(grouping: pairs, by: \.0).mapValues { $0.map(\.1) }
             return grouped
                 .compactMap { currency, lines -> AppliedExchangeRate? in
                     let totalForeign = lines.reduce(Decimal(0)) { $0 + ($1.costAmount ?? 0) }
