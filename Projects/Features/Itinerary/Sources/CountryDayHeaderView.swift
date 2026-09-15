@@ -16,7 +16,7 @@ struct CountryDayHeaderView: View {
     }
 
     var body: some View {
-        HStack(spacing: 1) {
+        HStack(spacing: 0) {
             ForEach(segments) { segment in
                 let color = segment.countryCode.map(countryColor) ?? Color.gray.opacity(0.35)
                 HStack(spacing: 3) {
@@ -25,7 +25,7 @@ struct CountryDayHeaderView: View {
                             .font(.system(size: 11))
                     }
                     Text(segment.countryCode.flatMap { CountryCatalog.option(for: $0)?.name } ?? segment.countryCode ?? "")
-                        .font(.caption2.weight(.semibold))
+                        .font(FlowneyFont.captionEmphasis)
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
                 }

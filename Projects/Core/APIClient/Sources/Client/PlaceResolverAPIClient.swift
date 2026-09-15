@@ -1,0 +1,84 @@
+import ComposableArchitecture
+import Foundation
+import Models
+
+public struct ResolvedPlace: Codable, Equatable, Sendable {
+    public var name: String
+    public var lat: Double?
+    public var lng: Double?
+    public var address: String?
+    public var placeId: String?
+
+    public init(name: String, lat: Double? = nil, lng: Double? = nil, address: String? = nil, placeId: String? = nil) {
+        self.name = name
+        self.lat = lat
+        self.lng = lng
+        self.address = address
+        self.placeId = placeId
+    }
+}
+
+public enum PlaceResolverError: Error, Equatable {
+    case invalidEndpoint
+    case notSignedIn
+    case requestFailed
+    case unresolvableLink
+}
+
+@DependencyClient
+public struct PlaceResolverAPIClient: Sendable {
+    public var resolve: @Sendable (_ url: String) async throws -> ResolvedPlace
+}
+
+extension PlaceResolverAPIClient: DependencyKey {
+    public static let liveValue: PlaceResolverAPIClient = {
+        PlaceResolverAPIClient(
+            resolve: { urlString in
+                FlowneyLog.debug("place resolve 요청 url=\(urlString)", category: .network)
+                guard let endpoint = URL(string: "https://mock-serverless.vercel.app/api/travel/place/resolve") else {
+                    throw PlaceResolverError.invalidEndpoint
+                }
+                guard let session = try? await SupabaseClientProvider.shared.auth.session else {
+                    throw PlaceResolverError.notSignedIn
+                }
+
+                var request = URLRequest(url: endpoint)
+                request.httpMethod = "POST"
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+                request.httpBody = try JSONEncoder().encode(["url": urlString])
+
+                let (data, response) = try await URLSession.shared.data(for: request)
+                guard
+                    let httpResponse = response as? HTTPURLResponse,
+                    (200 ..< 300).contains(httpResponse.statusCode)
+                else {
+                    let statusCode = (response as? HTTPURLResponse)?.statusCode ?? -1
+                    let body = String(data: data, encoding: .utf8) ?? "(no body)"
+                    FlowneyLog.error("place resolve HTTP \(statusCode): \(body)", category: .network)
+                    throw PlaceResolverError.requestFailed
+                }
+
+                let decoded = try JSONDecoder().decode(ResolveResponse.self, from: data)
+                guard decoded.result, let place = decoded.place else {
+                    FlowneyLog.warning("place resolve unresolvable url=\(urlString)", category: .network)
+                    throw PlaceResolverError.unresolvableLink
+                }
+                FlowneyLog.debug("place resolve 성공 name=\(place.name)", category: .network)
+                return place
+            }
+        )
+    }()
+}
+
+private struct ResolveResponse: Decodable {
+    let result: Bool
+    let place: ResolvedPlace?
+}
+
+extension DependencyValues {
+    public var placeResolverAPIClient: PlaceResolverAPIClient {
+        get { self[PlaceResolverAPIClient.self] }
+        set { self[PlaceResolverAPIClient.self] = newValue }
+    }
+}

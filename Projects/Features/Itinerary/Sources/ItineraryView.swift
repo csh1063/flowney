@@ -11,12 +11,12 @@ public struct ItineraryView: View {
     @State private var shareStore: StoreOf<TripShareFeature>?
     @State private var addItemFlowStore: StoreOf<AddItemFlowFeature>?
     @State private var isListSheetPresented = false
-    @State private var sheetDetent: PresentationDetent = .height(expandedListHeight)
+    @State private var sheetDetent: PresentationDetent = .height(Self.expandedListHeight)
     let onTripListRequested: () -> Void
 
     private let dayColumnWidth: CGFloat = 64
-    private static let expandedListHeight: CGFloat = 220
-    private static let collapsedListHeight: CGFloat = 120
+    private static let expandedListHeight: CGFloat = 228
+    private static let collapsedListHeight: CGFloat = 128
 
     public init(store: StoreOf<ItineraryFeature>, onTripListRequested: @escaping () -> Void) {
         self.store = store
@@ -44,7 +44,7 @@ public struct ItineraryView: View {
                 }
 
                 if store.trip != nil, store.days.isEmpty {
-                    WaypinTheme.background
+                    FlowneyTheme.background
                         .overlay { ProgressView() }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .ignoresSafeArea(edges: .bottom)
@@ -59,7 +59,14 @@ public struct ItineraryView: View {
                     .padding(.bottom, max(24, currentListHeight - UIApplication.shared.keyWindowSafeAreaInsets.bottom))
             }
         }
-        .waypinLeadingTitle(store.trip?.name ?? "Waypin")
+        .overlay(alignment: .bottomLeading) {
+            if store.trip != nil, let label = activeRefreshLabel {
+                RefreshStatusLabel(text: label)
+                    .padding(.leading, 16)
+                    .padding(.bottom, max(24, currentListHeight - UIApplication.shared.keyWindowSafeAreaInsets.bottom))
+            }
+        }
+        .flowneyLeadingTitle(store.trip?.name ?? "Flowney")
         .toolbar {
             if store.trip != nil {
                 ToolbarItem(placement: .primaryAction) {
@@ -69,58 +76,69 @@ public struct ItineraryView: View {
                         Image(systemName: "plus")
                     }
                 }
-                ToolbarItem(placement: .secondaryAction) {
-                    Button {
-                        store.send(.searchAllRoutesButtonTapped)
-                    } label: {
-                        Label(
-                            store.isSearchingAllRoutes ? "탐색 중…" : "전체 경로 탐색",
-                            systemImage: store.isSearchingAllRoutes ? "hourglass" : "point.topleft.down.curvedto.point.bottomright.up"
-                        )
-                    }
-                    .disabled(store.isSearchingAllRoutes)
-                }
-                ToolbarItem(placement: .secondaryAction) {
-                    Button {
-                        store.send(.todayRouteRefreshButtonTapped)
-                    } label: {
-                        Label(
-                            store.isRefreshingTodayRoute ? "갱신 중…" : "오늘 경로 갱신",
-                            systemImage: store.isRefreshingTodayRoute ? "hourglass" : "arrow.clockwise"
-                        )
-                    }
-                    .disabled(store.isRefreshingTodayRoute)
-                }
-                ToolbarItem(placement: .secondaryAction) {
-                    Divider()
-                }
-                ToolbarItem(placement: .secondaryAction) {
-                    Button {
-                        onTripListRequested()
-                    } label: {
-                        Label("여행 목록", systemImage: "list.bullet")
-                    }
-                }
-                ToolbarItem(placement: .secondaryAction) {
-                    Button {
-                        if let trip = store.trip {
-                            editStore = Store(initialState: TripEditFeature.State(editing: trip, countries: Array(store.countries))) {
-                                TripEditFeature()
+                ToolbarItem(placement: .primaryAction) {
+                    Menu {
+                        Section("데이터 갱신") {
+                            Button {
+                                store.send(.searchAllRoutesButtonTapped)
+                            } label: {
+                                Label(
+                                    store.isSearchingAllRoutes ? "탐색 중…" : "전체 경로 탐색",
+                                    systemImage: store.isSearchingAllRoutes ? "hourglass" : "point.topleft.down.curvedto.point.bottomright.up"
+                                )
+                            }
+                            .disabled(store.isSearchingAllRoutes || store.isRefreshingTodayRoute)
+
+                            Button {
+                                store.send(.todayRouteRefreshButtonTapped)
+                            } label: {
+                                Label(
+                                    store.isRefreshingTodayRoute ? "갱신 중…" : "오늘 경로 갱신",
+                                    systemImage: store.isRefreshingTodayRoute ? "hourglass" : "arrow.clockwise"
+                                )
+                            }
+                            .disabled(store.isSearchingAllRoutes || store.isRefreshingTodayRoute)
+
+                            Button {
+                                store.send(.refreshAllWeatherButtonTapped)
+                            } label: {
+                                Label(
+                                    store.isRefreshingWeather ? "갱신 중…" : "전체 날씨 갱신",
+                                    systemImage: store.isRefreshingWeather ? "hourglass" : "cloud.sun"
+                                )
+                            }
+                            .disabled(store.isRefreshingWeather)
+                        }
+
+                        Section("여행 관리") {
+                            Button {
+                                onTripListRequested()
+                            } label: {
+                                Label("여행 목록", systemImage: "list.bullet")
+                            }
+
+                            Button {
+                                if let trip = store.trip {
+                                    editStore = Store(initialState: TripEditFeature.State(editing: trip, countries: Array(store.countries))) {
+                                        TripEditFeature()
+                                    }
+                                }
+                            } label: {
+                                Label("여행 수정", systemImage: "pencil")
+                            }
+
+                            Button {
+                                if let trip = store.trip {
+                                    shareStore = Store(initialState: TripShareFeature.State(tripId: trip.id)) {
+                                        TripShareFeature()
+                                    }
+                                }
+                            } label: {
+                                Label("여행 공유", systemImage: "square.and.arrow.up")
                             }
                         }
                     } label: {
-                        Label("여행 수정", systemImage: "pencil")
-                    }
-                }
-                ToolbarItem(placement: .secondaryAction) {
-                    Button {
-                        if let trip = store.trip {
-                            shareStore = Store(initialState: TripShareFeature.State(tripId: trip.id)) {
-                                TripShareFeature()
-                            }
-                        }
-                    } label: {
-                        Label("여행 공유", systemImage: "square.and.arrow.up")
+                        Image(systemName: "ellipsis.circle")
                     }
                 }
             }
@@ -130,14 +148,7 @@ public struct ItineraryView: View {
         }
         .onChange(of: store.addItemFlowRequest) { _, request in
             guard let request else { return }
-            let wasListSheetPresented = isListSheetPresented
-            isListSheetPresented = false
-            Task { @MainActor in
-                if wasListSheetPresented {
-                    try? await Task.sleep(for: .milliseconds(350))
-                }
-                addItemFlowStore = Store(initialState: request) { AddItemFlowFeature() }
-            }
+            addItemFlowStore = Store(initialState: request) { AddItemFlowFeature() }
             store.send(.addItemRequestConsumed)
         }
         .sheet(isPresented: $isListSheetPresented) {
@@ -149,22 +160,13 @@ public struct ItineraryView: View {
         }
         .sheet(
             isPresented: Binding(
-                get: { addItemFlowStore != nil },
+                get: { addItemFlowStore != nil && !isListSheetPresented },
                 set: { isPresented in
                     if !isPresented { addItemFlowStore = nil }
                 }
             )
         ) {
-            if let addItemFlowStore {
-                AddItemFlowView(
-                    store: addItemFlowStore,
-                    onItemAdded: { item in
-                        store.send(.itemAdded(item))
-                        self.addItemFlowStore = nil
-                    },
-                    onCancelled: { self.addItemFlowStore = nil }
-                )
-            }
+            addItemFlowSheetContent
         }
         .sheet(
             isPresented: Binding(
@@ -196,12 +198,15 @@ public struct ItineraryView: View {
                 TripShareView(store: shareStore)
             }
         }
+//        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 20) }
+        .flowneyLifecycleLog(category: .itinerary)
     }
 
     private var mapLayer: some View {
         RouteMapView(
             items: store.trip != nil ? store.selectedItems : [],
             legs: store.trip != nil ? store.selectedDayLegs : [],
+            countries: store.trip != nil ? store.countries : [],
             currentStopIndex: store.trip != nil ? store.currentStopIndex : nil,
             animateTrigger: store.animateTrigger,
             jumpTrigger: store.jumpTrigger,
@@ -220,17 +225,17 @@ public struct ItineraryView: View {
         } label: {
             Label("여행 불러오기", systemImage: "airplane")
         }
-        .buttonStyle(.waypinPrimary)
-        .padding(.horizontal, WaypinSpacing.xxl)
-        .padding(.vertical, WaypinSpacing.md)
-        .background(WaypinTheme.background)
+        .buttonStyle(.flowneyPrimary)
+        .padding(.horizontal, FlowneySpacing.xxl)
+        .padding(.vertical, FlowneySpacing.md)
+        .background(FlowneyTheme.background)
     }
 
     private func errorBanner(_ message: String) -> some View {
         VStack(spacing: 8) {
             Label("문제가 발생했어요", systemImage: "exclamationmark.triangle")
             Text(message)
-                .font(.caption)
+                .font(FlowneyFont.caption)
                 .foregroundStyle(.secondary)
         }
         .padding()
@@ -272,19 +277,26 @@ public struct ItineraryView: View {
             .padding(.top, 8)
 
             Text(store.selectedDayWeather.map(weatherSummary) ?? " ")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(FlowneyFont.caption)
+                .foregroundStyle(FlowneyTheme.textSecondary)
                 .padding(.bottom, 4)
         }
-        .background(WaypinTheme.background)
+        .background(FlowneyTheme.background)
     }
 
     private func weatherSummary(_ weather: DayWeather) -> String {
-        var text = "\(weather.icon) \(weather.tmin)°/\(weather.tmax)° 강수확률 \(weather.pop)%(\(weather.precip)mm)"
+        var text = "\(weather.icon) \(weather.tmin)°/\(weather.pop)%(\(weather.precip)mm)"
         if weather.historical {
             text += " (지난 평균)"
         }
         return text
+    }
+
+    private var activeRefreshLabel: String? {
+        if store.isSearchingAllRoutes { return "전체 경로 갱신 중" }
+        if store.isRefreshingTodayRoute { return "오늘 경로 갱신 중" }
+        if store.isRefreshingWeather { return "날씨 갱신 중" }
+        return nil
     }
 
     private var controlBar: some View {
@@ -306,7 +318,7 @@ public struct ItineraryView: View {
                 }
                 isListSheetPresented.toggle()
             } label: {
-                Image(systemName: isListSheetPresented ? "chevron.down" : "chevron.up")
+                Image(systemName: isListSheetPresented ? "chevron.down" : "list.bullet")
                     .font(.title2)
                     .padding(10)
                     .background(.thinMaterial)
@@ -349,10 +361,10 @@ public struct ItineraryView: View {
                                     .frame(width: 32)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("전체보기")
-                                        .font(.body.weight(.medium))
+                                        .font(FlowneyFont.bodyEmphasis)
                                     Text("오늘 동선 한눈에 보기")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                        .font(FlowneyFont.caption)
+                                        .foregroundStyle(FlowneyTheme.textSecondary)
                                 }
                                 Spacer()
                                 if store.currentStopIndex == nil {
@@ -368,7 +380,7 @@ public struct ItineraryView: View {
 
                         ForEach(store.selectedItems) { item in
                             HStack {
-                                ItineraryItemRowView(item: item)
+                                ItineraryItemRowView(item: item, costEntry: store.entries[id: item.id])
                                 if store.selectedItemID == item.id {
                                     Image(systemName: "location.fill")
                                         .foregroundStyle(.blue)
@@ -378,7 +390,7 @@ public struct ItineraryView: View {
                                         store.send(.warningIconTapped(item.id))
                                     } label: {
                                         Image(systemName: "exclamationmark.triangle.fill")
-                                            .foregroundStyle(.yellow)
+                                            .foregroundStyle(FlowneyTheme.warning)
                                     }
                                     .buttonStyle(.borderless)
                                 }
@@ -444,12 +456,36 @@ public struct ItineraryView: View {
             }
         } message: {
             if let item = store.warningPopupItem {
-                Text("\(item.name)의 위치가 여행에 등록된 나라가 아니에요. 잠깐 들른 곳이면 그냥 둬도 되고, 주소가 잘못됐으면 삭제하세요.")
+                Text("\(item.name)의 위치가 여행에 등록된 나라면 그냥 둬도 되고, 주소가 잘못됐으면 삭제하세요.")
             }
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { addItemFlowStore != nil && isListSheetPresented },
+                set: { isPresented in
+                    if !isPresented { addItemFlowStore = nil }
+                }
+            )
+        ) {
+            addItemFlowSheetContent
         }
     }
 
     private var allViewRowID: String { "__all__" }
+
+    @ViewBuilder
+    private var addItemFlowSheetContent: some View {
+        if let addItemFlowStore {
+            AddItemFlowView(
+                store: addItemFlowStore,
+                onItemAdded: { item in
+                    store.send(.itemAdded(item))
+                    self.addItemFlowStore = nil
+                },
+                onCancelled: { self.addItemFlowStore = nil }
+            )
+        }
+    }
 }
 
 extension UIApplication {
@@ -459,5 +495,22 @@ extension UIApplication {
             return .zero
         }
         return window.safeAreaInsets
+    }
+}
+
+private struct RefreshStatusLabel: View {
+    let text: String
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 0.45)) { context in
+            let dotCount = Int(context.date.timeIntervalSinceReferenceDate / 0.45) % 3 + 1
+            Text(text + String(repeating: ".", count: dotCount))
+                .font(.system(size: 12))
+                .foregroundStyle(FlowneyTheme.textSecondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(.thinMaterial)
+                .clipShape(Capsule())
+        }
     }
 }

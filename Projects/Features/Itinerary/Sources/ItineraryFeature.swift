@@ -1,6 +1,7 @@
 import AddItem
 import APIClient
 import ComposableArchitecture
+import DesignSystem
 import Foundation
 import Models
 
@@ -12,7 +13,10 @@ public struct ItineraryFeature {
         public var countries: IdentifiedArrayOf<TripCountry> = []
         public var days: IdentifiedArrayOf<TripDay> = []
         public var selectedDayID: TripDay.ID?
+        public var editingDayLabelForID: TripDay.ID?
+        public var listSelectedItemID: ItineraryItem.ID?
         public var itemsByDay: [TripDay.ID: IdentifiedArrayOf<ItineraryItem>] = [:]
+        public var entries: IdentifiedArrayOf<BudgetEntry> = []
         public var legsByDay: [TripDay.ID: IdentifiedArrayOf<RouteLeg>] = [:]
         public var weatherByDay: [TripDay.ID: DayWeather] = [:]
         public var isLoading = false
@@ -26,6 +30,7 @@ public struct ItineraryFeature {
         public var isAnimating: Bool = false
         public var isSearchingAllRoutes: Bool = false
         public var isRefreshingTodayRoute: Bool = false
+        public var isRefreshingWeather: Bool = false
 
         public var warningPopupItemID: ItineraryItem.ID?
 
@@ -115,17 +120,26 @@ public struct ItineraryFeature {
         case onAppear
         case daysResponse(Result<[TripDay], any Error>)
         case itemsResponse(Result<[ItineraryItem], any Error>)
+        case entriesResponse(Result<[BudgetEntry], any Error>)
         case countriesResponse(Result<[TripCountry], any Error>)
         case weatherResponse(TripDay.ID, Result<DayWeather, any Error>)
         case dayTabTapped(TripDay.ID)
+        case listItemTapped(ItineraryItem.ID)
+        case listSelectionCleared
+        case editDayLabelButtonTapped(TripDay.ID)
+        case dayLabelEditCancelled
+        case dayLabelChanged(TripDay.ID, String?)
+        case dayLabelUpdateResponse(Result<TripDay, any Error>)
         case addItemButtonTapped
         case editItemTapped(ItineraryItem)
         case addItemRequestConsumed
         case itemAdded(ItineraryItem)
         case deleteItems(IndexSet)
+        case deleteItemByID(ItineraryItem.ID)
         case deleteItemResponse(Result<ItineraryItem.ID, any Error>)
         case itemsMovedWithinDay(IndexSet, Int)
         case itemDroppedOnDay(ItineraryItem.ID, TripDay.ID)
+        case itemsReorderedAcrossDays([TripDay.ID: [ItineraryItem]])
         case reorderPersistResponse(Result<Void, any Error>)
         case countryCodesResolved([ItineraryItem.ID: String])
         case warningIconTapped(ItineraryItem.ID)
@@ -145,16 +159,43 @@ public struct ItineraryFeature {
 
         case todayRouteRefreshButtonTapped
         case todayRouteRefreshFinished
+
+        case refreshAllWeatherButtonTapped
+        case weatherRefreshFinished
     }
 
     @Dependency(\.tripsRepository) var tripsRepository
     @Dependency(\.itineraryRepository) var itineraryRepository
+    @Dependency(\.budgetEntryRepository) var budgetEntryRepository
     @Dependency(\.routeAPIClient) var routeAPIClient
     @Dependency(\.routeCacheClient) var routeCacheClient
     @Dependency(\.weatherAPIClient) var weatherAPIClient
     @Dependency(\.countryLookupClient) var countryLookupClient
 
     public init() {}
+
+    private enum ReorderCancelID: Hashable {
+        case persist(TripDay.ID)
+    }
+
+    private func reorderPersistEffect(
+        dayID: TripDay.ID,
+        updates: [ItemReorderUpdate],
+        items: [ItineraryItem]
+    ) -> Effect<Action> {
+        .run { [itineraryRepository, updates, items] send in
+            do {
+                try await itineraryRepository.reorderItems(updates)
+                for item in items {
+                    _ = try? await itineraryRepository.updateItem(item)
+                }
+                await send(.reorderPersistResponse(.success(())))
+            } catch {
+                await send(.reorderPersistResponse(.failure(error)))
+            }
+        }
+        .cancellable(id: ReorderCancelID.persist(dayID), cancelInFlight: true)
+    }
 
     public var body: some ReducerOf<Self> {
         Reduce { state, action in
@@ -165,21 +206,27 @@ public struct ItineraryFeature {
 
             case .onAppear:
                 guard let tripID = state.trip?.id else { return .none }
+                FlowneyLog.debug("onAppear trip=\(tripID)", category: .itinerary)
                 state.isLoading = true
+                let cachedWeatherDayIDs = Set(state.weatherByDay.keys)
                 return .run { send in
                     var days: [TripDay] = []
                     do {
                         days = try await tripsRepository.fetchDays(tripID)
+                        FlowneyLog.debug("fetchDays succeeded count=\(days.count)", category: .itinerary)
                         await send(.daysResponse(.success(days)))
                     } catch {
+                        FlowneyLog.error("fetchDays failed: \(error)", category: .itinerary)
                         await send(.daysResponse(.failure(error)))
                     }
 
                     var items: [ItineraryItem] = []
                     do {
                         items = try await itineraryRepository.fetchAllItems(tripID)
+                        FlowneyLog.debug("fetchAllItems succeeded count=\(items.count)", category: .itinerary)
                         await send(.itemsResponse(.success(items)))
                     } catch {
+                        FlowneyLog.error("fetchAllItems failed: \(error)", category: .itinerary)
                         await send(.itemsResponse(.failure(error)))
                     }
 
@@ -187,70 +234,19 @@ public struct ItineraryFeature {
                         let countries = try await tripsRepository.fetchCountries(tripID)
                         await send(.countriesResponse(.success(countries)))
                     } catch {
+                        FlowneyLog.error("fetchCountries failed: \(error)", category: .itinerary)
                         await send(.countriesResponse(.failure(error)))
                     }
 
-                    guard !days.isEmpty, !items.isEmpty else { return }
-
-                    struct DayLocation {
-                        let day: TripDay
-                        let lat: Double
-                        let lng: Double
-                    }
-                    let dayLocations: [DayLocation] = days.compactMap { day in
-                        guard
-                            let firstItem = items
-                                .filter({ $0.dayId == day.id })
-                                .sorted(by: { $0.sortOrder < $1.sortOrder })
-                                .first(where: { $0.lat != nil && $0.lng != nil }),
-                            let lat = firstItem.lat, let lng = firstItem.lng
-                        else { return nil }
-                        return DayLocation(day: day, lat: lat, lng: lng)
+                    do {
+                        let entries = try await budgetEntryRepository.fetchAllEntries(tripID)
+                        await send(.entriesResponse(.success(entries)))
+                    } catch {
+                        FlowneyLog.error("fetchAllEntries failed: \(error)", category: .itinerary)
+                        await send(.entriesResponse(.failure(error)))
                     }
 
-                    var blocks: [[DayLocation]] = []
-                    for location in dayLocations {
-                        if let lastBlockLocation = blocks.last?.last,
-                           abs(lastBlockLocation.lat - location.lat) < 0.01,
-                           abs(lastBlockLocation.lng - location.lng) < 0.01 {
-                            blocks[blocks.count - 1].append(location)
-                        } else {
-                            blocks.append([location])
-                        }
-                    }
-
-                    let keyFormatter = DateFormatter()
-                    keyFormatter.calendar = Calendar(identifier: .gregorian)
-                    keyFormatter.locale = Locale(identifier: "en_US_POSIX")
-                    keyFormatter.timeZone = TimeZone(identifier: "UTC")
-                    keyFormatter.dateFormat = "yyyy-MM-dd"
-
-                    await withTaskGroup(of: Void.self) { group in
-                        for block in blocks {
-                            guard let representative = block.first else { continue }
-                            group.addTask {
-                                do {
-                                    let weatherByDate = try await weatherAPIClient.fetchWeatherRange(
-                                        representative.lat,
-                                        representative.lng,
-                                        block.map(\.day.dayDate)
-                                    )
-                                    for location in block {
-                                        let key = keyFormatter.string(from: location.day.dayDate)
-                                        if let weather = weatherByDate[key] {
-                                            await send(.weatherResponse(location.day.id, .success(weather)))
-                                        } else {
-                                            await send(.weatherResponse(location.day.id, .failure(WeatherAPIError.noData)))
-                                        }
-                                    }
-                                } catch {
-                                    for location in block {
-                                        await send(.weatherResponse(location.day.id, .failure(error)))
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    await fetchWeather(days: days, items: items, skippingCachedIn: cachedWeatherDayIDs, send: send)
                 }
 
             case let .daysResponse(.success(days)):
@@ -286,6 +282,13 @@ public struct ItineraryFeature {
             case .countriesResponse(.failure):
                 return .none
 
+            case let .entriesResponse(.success(entries)):
+                state.entries = IdentifiedArrayOf(uniqueElements: entries)
+                return .none
+
+            case .entriesResponse(.failure):
+                return .none
+
             case let .weatherResponse(dayID, .success(weather)):
                 state.weatherByDay[dayID] = weather
                 return .none
@@ -301,15 +304,59 @@ public struct ItineraryFeature {
                 state.jumpTrigger += 1
                 return .none
 
+            case let .listItemTapped(itemID):
+                state.listSelectedItemID = state.listSelectedItemID == itemID ? nil : itemID
+                return .none
+
+            case .listSelectionCleared:
+                state.listSelectedItemID = nil
+                return .none
+
+            case let .editDayLabelButtonTapped(dayID):
+                state.editingDayLabelForID = dayID
+                return .none
+
+            case .dayLabelEditCancelled:
+                state.editingDayLabelForID = nil
+                return .none
+
+            case let .dayLabelChanged(dayID, newLabel):
+                state.editingDayLabelForID = nil
+                guard var day = state.days[id: dayID] else { return .none }
+                day.label = newLabel
+                state.days[id: dayID] = day
+
+                return .run { [tripsRepository, day] send in
+                    do {
+                        let saved = try await tripsRepository.updateDay(day)
+                        await send(.dayLabelUpdateResponse(.success(saved)))
+                    } catch {
+                        await send(.dayLabelUpdateResponse(.failure(error)))
+                    }
+                }
+
+            case let .dayLabelUpdateResponse(.success(day)):
+                state.days[id: day.id] = day
+                return .none
+
+            case let .dayLabelUpdateResponse(.failure(error)):
+                state.errorMessage = error.localizedDescription
+                return .none
+
             case .addItemButtonTapped:
-                guard let trip = state.trip, let dayID = state.selectedDayID, let day = state.days[id: dayID] else { return .none }
-                let count = state.itemsByDay[dayID]?.count ?? 0
-                state.addItemFlowRequest = AddItemFlowFeature.State(trip: trip, day: day, startingSortOrder: count, defaultTripID: trip.id)
+                guard let trip = state.trip else { return .none }
+                if let dayID = state.selectedDayID, let day = state.days[id: dayID] {
+                    let count = state.itemsByDay[dayID]?.count ?? 0
+                    state.addItemFlowRequest = AddItemFlowFeature.State(trip: trip, day: day, startingSortOrder: count, defaultTripID: trip.id)
+                } else {
+                    state.addItemFlowRequest = AddItemFlowFeature.State(defaultTripID: trip.id)
+                }
                 return .none
 
             case let .editItemTapped(item):
                 guard let trip = state.trip, let day = state.days[id: item.dayId] else { return .none }
-                state.addItemFlowRequest = AddItemFlowFeature.State(editingItem: item, trip: trip, day: day)
+                state.listSelectedItemID = nil
+                state.addItemFlowRequest = AddItemFlowFeature.State(editingItem: item, trip: trip, day: day, linkedEntry: state.entries[id: item.id])
                 return .none
 
             case .addItemRequestConsumed:
@@ -318,7 +365,13 @@ public struct ItineraryFeature {
 
             case let .itemAdded(item):
                 state.itemsByDay[item.dayId, default: []][id: item.id] = item
-                return resolveCountryCodes(for: [item])
+                return .merge(
+                    resolveCountryCodes(for: [item]),
+                    .run { [budgetEntryRepository, tripID = item.tripId] send in
+                        guard let entries = try? await budgetEntryRepository.fetchAllEntries(tripID) else { return }
+                        await send(.entriesResponse(.success(entries)))
+                    }
+                )
 
             case let .countryCodesResolved(resolved):
                 var itemsToPersist: [ItineraryItem] = []
@@ -331,10 +384,29 @@ public struct ItineraryFeature {
                     state.itemsByDay[dayID]?[id: itemID] = item
                     itemsToPersist.append(item)
                 }
-                guard !itemsToPersist.isEmpty else { return .none }
-                return .run { [itineraryRepository, itemsToPersist] _ in
+
+                var newCountries: [TripCountry] = []
+                if let tripID = state.trip?.id {
+                    for item in itemsToPersist {
+                        guard let code = item.countryCode, !state.countries.contains(where: { $0.countryCode == code }) else { continue }
+                        let country = TripCountry(
+                            tripId: tripID,
+                            countryCode: code,
+                            color: CountryCatalog.option(for: code)?.defaultColorHex ?? FlowneyTheme.brandNavyHex,
+                            sortOrder: state.countries.count
+                        )
+                        state.countries.append(country)
+                        newCountries.append(country)
+                    }
+                }
+
+                guard !itemsToPersist.isEmpty || !newCountries.isEmpty else { return .none }
+                return .run { [itineraryRepository, tripsRepository, itemsToPersist, newCountries] _ in
                     for item in itemsToPersist {
                         _ = try? await itineraryRepository.updateItem(item)
+                    }
+                    if !newCountries.isEmpty {
+                        try? await tripsRepository.upsertCountries(newCountries)
                     }
                 }
 
@@ -350,11 +422,32 @@ public struct ItineraryFeature {
                 state.warningPopupItemID = nil
                 guard let dayID = state.itemsByDay.first(where: { $0.value[id: itemID] != nil })?.key else { return .none }
                 state.itemsByDay[dayID]?.remove(id: itemID)
+                state.entries.remove(id: itemID)
                 return .run { send in
                     do {
                         try await itineraryRepository.deleteItem(itemID)
+                        FlowneyLog.debug("deleteItem OK id=\(itemID)", category: .itinerary)
                         await send(.deleteItemResponse(.success(itemID)))
                     } catch {
+                        FlowneyLog.error("deleteItem failed id=\(itemID): \(error)", category: .itinerary)
+                        await send(.deleteItemResponse(.failure(error)))
+                    }
+                }
+
+            case let .deleteItemByID(itemID):
+                guard let dayID = state.itemsByDay.first(where: { $0.value[id: itemID] != nil })?.key else { return .none }
+                state.itemsByDay[dayID]?.remove(id: itemID)
+                state.entries.remove(id: itemID)
+                if state.listSelectedItemID == itemID {
+                    state.listSelectedItemID = nil
+                }
+                return .run { send in
+                    do {
+                        try await itineraryRepository.deleteItem(itemID)
+                        FlowneyLog.debug("deleteItem OK id=\(itemID)", category: .itinerary)
+                        await send(.deleteItemResponse(.success(itemID)))
+                    } catch {
+                        FlowneyLog.error("deleteItem failed id=\(itemID): \(error)", category: .itinerary)
                         await send(.deleteItemResponse(.failure(error)))
                     }
                 }
@@ -365,12 +458,15 @@ public struct ItineraryFeature {
                 let ids = indexSet.map { items[$0].id }
                 items.remove(atOffsets: indexSet)
                 state.itemsByDay[dayID] = items
+                for id in ids { state.entries.remove(id: id) }
                 return .run { send in
                     for id in ids {
                         do {
                             try await itineraryRepository.deleteItem(id)
+                            FlowneyLog.debug("deleteItem OK id=\(id)", category: .itinerary)
                             await send(.deleteItemResponse(.success(id)))
                         } catch {
+                            FlowneyLog.error("deleteItem failed id=\(id): \(error)", category: .itinerary)
                             await send(.deleteItemResponse(.failure(error)))
                         }
                     }
@@ -397,17 +493,7 @@ public struct ItineraryFeature {
                 let updates = items.map {
                     ItemReorderUpdate(id: $0.id, dayId: $0.dayId, sortOrder: $0.sortOrder)
                 }
-                return .run { [itineraryRepository, items] send in
-                    do {
-                        try await itineraryRepository.reorderItems(updates)
-                        for item in items {
-                            _ = try? await itineraryRepository.updateItem(item)
-                        }
-                        await send(.reorderPersistResponse(.success(())))
-                    } catch {
-                        await send(.reorderPersistResponse(.failure(error)))
-                    }
-                }
+                return reorderPersistEffect(dayID: dayID, updates: updates, items: Array(items))
 
             case let .itemDroppedOnDay(itemID, targetDayID):
                 guard
@@ -431,28 +517,43 @@ public struct ItineraryFeature {
                 state.itemsByDay[targetDayID, default: []].append(item)
                 state.legsByDay[targetDayID] = []
 
-                var updates = [ItemReorderUpdate(id: item.id, dayId: item.dayId, sortOrder: item.sortOrder)]
-                var itemsToPersist = [item]
-                if let sourceItems = state.itemsByDay[sourceDayID] {
-                    updates.append(
-                        contentsOf: sourceItems.map {
-                            ItemReorderUpdate(id: $0.id, dayId: $0.dayId, sortOrder: $0.sortOrder)
-                        }
-                    )
-                    itemsToPersist.append(contentsOf: sourceItems)
+                let targetUpdate = ItemReorderUpdate(id: item.id, dayId: item.dayId, sortOrder: item.sortOrder)
+                var effects = [reorderPersistEffect(dayID: targetDayID, updates: [targetUpdate], items: [item])]
+
+                if let sourceItems = state.itemsByDay[sourceDayID], !sourceItems.isEmpty {
+                    let sourceUpdates = sourceItems.map {
+                        ItemReorderUpdate(id: $0.id, dayId: $0.dayId, sortOrder: $0.sortOrder)
+                    }
+                    effects.append(reorderPersistEffect(dayID: sourceDayID, updates: sourceUpdates, items: Array(sourceItems)))
                 }
 
-                return .run { [itineraryRepository, updates, itemsToPersist] send in
-                    do {
-                        try await itineraryRepository.reorderItems(updates)
-                        for item in itemsToPersist {
-                            _ = try? await itineraryRepository.updateItem(item)
+                return .merge(effects)
+
+            case let .itemsReorderedAcrossDays(newItemsByDay):
+                var effects: [Effect<Action>] = []
+
+                for (dayID, items) in newItemsByDay {
+                    var reindexed = items
+                    var dayChanged = false
+                    for index in reindexed.indices {
+                        if reindexed[index].dayId != dayID {
+                            dayChanged = true
                         }
-                        await send(.reorderPersistResponse(.success(())))
-                    } catch {
-                        await send(.reorderPersistResponse(.failure(error)))
+                        reindexed[index].dayId = dayID
+                        reindexed[index].sortOrder = index
                     }
+                    if dayChanged {
+                        for index in reindexed.indices {
+                            reindexed[index].arrivalMode = nil
+                        }
+                    }
+                    state.itemsByDay[dayID] = IdentifiedArrayOf(uniqueElements: reindexed)
+                    state.legsByDay[dayID] = []
+                    let updates = reindexed.map { ItemReorderUpdate(id: $0.id, dayId: $0.dayId, sortOrder: $0.sortOrder) }
+                    effects.append(reorderPersistEffect(dayID: dayID, updates: updates, items: reindexed))
                 }
+
+                return .merge(effects)
 
             case .reorderPersistResponse:
                 return .none
@@ -552,35 +653,44 @@ public struct ItineraryFeature {
                 return .none
 
             case .searchAllRoutesButtonTapped:
-                guard !state.isSearchingAllRoutes, let tripID = state.trip?.id else { return .none }
+                guard !state.isSearchingAllRoutes, !state.isRefreshingTodayRoute, let tripID = state.trip?.id else { return .none }
+                FlowneyLog.debug("전체 경로 탐색 시작 trip=\(tripID)", category: .route)
                 state.isSearchingAllRoutes = true
                 state.errorMessage = nil
                 return .run { send in
                     do {
                         let results = try await routeAPIClient.refreshTripRoutes(tripID, nil, .all)
+                        FlowneyLog.debug("전체 경로 탐색 응답 days=\(results.count)", category: .route)
                         for result in results {
                             await send(.dayRoutesResponse(result.dayId, .success(result.legs)))
                         }
                     } catch {
+                        FlowneyLog.error("전체 경로 탐색 실패: \(error)", category: .route)
                         await send(.allRoutesRefreshFailed(error))
                     }
                     await send(.searchAllRoutesFinished)
                 }
 
             case .todayRouteRefreshButtonTapped:
-                guard !state.isRefreshingTodayRoute, let tripID = state.trip?.id else { return .none }
-                let todayUTCMidnight = DateOnly.normalizeToUTCMidnight(.now)
-                guard let todayDayID = state.days.first(where: { $0.dayDate == todayUTCMidnight })?.id else { return .none }
+                guard !state.isRefreshingTodayRoute, !state.isSearchingAllRoutes, let tripID = state.trip?.id else { return .none }
+                guard let selectedDayID = state.selectedDayID else {
+                    FlowneyLog.debug("선택 날짜 경로 갱신 스킵: 선택된 날짜 없음", category: .route)
+                    state.errorMessage = "먼저 날짜를 선택해주세요."
+                    return .none
+                }
+                FlowneyLog.debug("선택 날짜 경로 갱신 시작 trip=\(tripID) day=\(selectedDayID)", category: .route)
                 state.isRefreshingTodayRoute = true
                 state.errorMessage = nil
                 return .run { send in
                     do {
-                        let results = try await routeAPIClient.refreshTripRoutes(tripID, todayDayID, .today)
+                        let results = try await routeAPIClient.refreshTripRoutes(tripID, selectedDayID, .today)
+                        FlowneyLog.debug("선택 날짜 경로 갱신 응답 days=\(results.count)", category: .route)
                         for result in results {
                             await send(.dayRoutesResponse(result.dayId, .success(result.legs)))
                         }
                     } catch {
-                        await send(.dayRoutesResponse(todayDayID, .failure(error)))
+                        FlowneyLog.error("선택 날짜 경로 갱신 실패: \(error)", category: .route)
+                        await send(.dayRoutesResponse(selectedDayID, .failure(error)))
                     }
                     await send(.todayRouteRefreshFinished)
                 }
@@ -589,26 +699,57 @@ public struct ItineraryFeature {
                 state.isRefreshingTodayRoute = false
                 return .none
 
+            case .refreshAllWeatherButtonTapped:
+                guard !state.isRefreshingWeather, state.trip != nil else { return .none }
+                FlowneyLog.debug("전체 날씨 갱신 시작 days=\(state.days.count)", category: .weather)
+                state.isRefreshingWeather = true
+                let days = Array(state.days)
+                let items = Array(state.itemsByDay.values.flatMap { $0 })
+                return .run { send in
+                    await fetchWeather(days: days, items: items, send: send)
+                    FlowneyLog.debug("전체 날씨 갱신 완료", category: .weather)
+                    await send(.weatherRefreshFinished)
+                }
+
+            case .weatherRefreshFinished:
+                state.isRefreshingWeather = false
+                return .none
+
             case let .dayRoutesResponse(dayID, .success(legs)):
                 let requestItemsForCache = (state.itemsByDay[dayID] ?? []).map {
                     RouteLegRequestItem(id: $0.id, lat: $0.lat, lng: $0.lng, mode: $0.arrivalMode, noRoute: $0.noRoute)
                 }
                 state.legsByDay[dayID] = IdentifiedArrayOf(uniqueElements: legs)
 
+                FlowneyLog.debug("dayRoutesResponse day=\(dayID) legs=\(legs.count)", category: .route)
+                for leg in legs {
+                    FlowneyLog.debug("  leg to=\(leg.toItemId) status=\(leg.status) mode=\(leg.mode)", category: .route)
+                }
+
                 var itemsToPersist: [ItineraryItem] = []
                 for leg in legs where leg.status == .ok {
-                    guard
-                        var item = state.itemsByDay[dayID]?[id: leg.toItemId],
-                        item.arrivalMode != leg.mode
-                    else { continue }
+                    guard var item = state.itemsByDay[dayID]?[id: leg.toItemId] else {
+                        FlowneyLog.warning("  no matching item for leg.toItemId=\(leg.toItemId)", category: .route)
+                        continue
+                    }
+                    guard item.arrivalMode != leg.mode else {
+                        FlowneyLog.debug("  item \(item.id) arrivalMode already \(String(describing: item.arrivalMode)), skipping", category: .route)
+                        continue
+                    }
                     item.arrivalMode = leg.mode
                     state.itemsByDay[dayID]?[id: leg.toItemId] = item
                     itemsToPersist.append(item)
                 }
+                FlowneyLog.debug("dayRoutesResponse itemsToPersist=\(itemsToPersist.count)", category: .route)
                 return .run { [itineraryRepository, routeCacheClient, itemsToPersist] _ in
                     await routeCacheClient.save(legs, requestItemsForCache)
                     for item in itemsToPersist {
-                        _ = try? await itineraryRepository.updateItem(item)
+                        do {
+                            _ = try await itineraryRepository.updateItem(item)
+                            FlowneyLog.debug("updateItem OK for \(item.id) arrivalMode=\(String(describing: item.arrivalMode))", category: .route)
+                        } catch {
+                            FlowneyLog.error("updateItem FAILED for \(item.id): \(error)", category: .route)
+                        }
                     }
                 }
 
@@ -658,6 +799,105 @@ public struct ItineraryFeature {
                     group.addTask {
                         guard let code = await self.countryLookupClient.countryCode(lat, lng) else { return }
                         await send(.countryCodesResolved([item.id: code]))
+                    }
+                }
+            }
+        }
+    }
+
+    private func fetchWeather(
+        days allDays: [TripDay],
+        items: [ItineraryItem],
+        skippingCachedIn cachedDayIDs: Set<TripDay.ID> = [],
+        send: Send<Action>
+    ) async {
+        guard !allDays.isEmpty, !items.isEmpty else { return }
+
+        struct DayLocation {
+            let day: TripDay
+            let lat: Double
+            let lng: Double
+        }
+
+        // 그 날 항목이 아직 없어서 위치를 모르는 날은, 가장 가까운 이전/다음 날의 위치를
+        // 빌려서라도 날씨를 보여준다 — 완전히 못 보여주는 것보단 근사치가 낫다.
+        var locationByDayID: [TripDay.ID: (lat: Double, lng: Double)] = [:]
+        for day in allDays {
+            if let firstItem = items
+                .filter({ $0.dayId == day.id })
+                .sorted(by: { $0.sortOrder < $1.sortOrder })
+                .first(where: { $0.lat != nil && $0.lng != nil }),
+                let lat = firstItem.lat, let lng = firstItem.lng {
+                locationByDayID[day.id] = (lat, lng)
+            }
+        }
+        var lastKnown: (lat: Double, lng: Double)?
+        for day in allDays {
+            if let known = locationByDayID[day.id] {
+                lastKnown = known
+            } else if let lastKnown {
+                locationByDayID[day.id] = lastKnown
+            }
+        }
+        var nextKnown: (lat: Double, lng: Double)?
+        for day in allDays.reversed() {
+            if let known = locationByDayID[day.id] {
+                nextKnown = known
+            } else if let nextKnown {
+                locationByDayID[day.id] = nextKnown
+            }
+        }
+
+        let days = allDays.filter { !cachedDayIDs.contains($0.id) }
+        guard !days.isEmpty else { return }
+
+        let dayLocations: [DayLocation] = days.compactMap { day in
+            guard let location = locationByDayID[day.id] else { return nil }
+            return DayLocation(day: day, lat: location.lat, lng: location.lng)
+        }
+
+        var blocks: [[DayLocation]] = []
+        for location in dayLocations {
+            if let lastBlockLocation = blocks.last?.last,
+               abs(lastBlockLocation.lat - location.lat) < 0.01,
+               abs(lastBlockLocation.lng - location.lng) < 0.01 {
+                blocks[blocks.count - 1].append(location)
+            } else {
+                blocks.append([location])
+            }
+        }
+
+        let keyFormatter = DateFormatter()
+        keyFormatter.calendar = Calendar(identifier: .gregorian)
+        keyFormatter.locale = Locale(identifier: "en_US_POSIX")
+        keyFormatter.timeZone = TimeZone(identifier: "UTC")
+        keyFormatter.dateFormat = "yyyy-MM-dd"
+
+        await withTaskGroup(of: Void.self) { group in
+            for block in blocks {
+                guard let representative = block.first else { continue }
+                group.addTask {
+                    do {
+                        let weatherByDate = try await self.weatherAPIClient.fetchWeatherRange(
+                            representative.lat,
+                            representative.lng,
+                            block.map(\.day.dayDate)
+                        )
+                        FlowneyLog.debug("날씨 조회 성공 days=\(block.count) lat=\(representative.lat) lng=\(representative.lng)", category: .weather)
+                        for location in block {
+                            let key = keyFormatter.string(from: location.day.dayDate)
+                            if let weather = weatherByDate[key] {
+                                await send(.weatherResponse(location.day.id, .success(weather)))
+                            } else {
+                                FlowneyLog.warning("날씨 데이터 없음 day=\(location.day.id)", category: .weather)
+                                await send(.weatherResponse(location.day.id, .failure(WeatherAPIError.noData)))
+                            }
+                        }
+                    } catch {
+                        FlowneyLog.error("날씨 조회 실패: \(error)", category: .weather)
+                        for location in block {
+                            await send(.weatherResponse(location.day.id, .failure(error)))
+                        }
                     }
                 }
             }

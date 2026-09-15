@@ -17,7 +17,7 @@ public enum DateOnly {
         return utcCalendar.date(from: components)!
     }
 
-    static func decode(_ container: KeyedDecodingContainer<Trip.CodingKeys>, forKey key: Trip.CodingKeys) throws -> Date {
+    static func decode<K: CodingKey>(_ container: KeyedDecodingContainer<K>, forKey key: K) throws -> Date {
         let string = try container.decode(String.self, forKey: key)
         guard let date = formatter.date(from: string) else {
             throw DecodingError.dataCorruptedError(forKey: key, in: container, debugDescription: "Invalid date-only format: \(string)")
@@ -25,8 +25,8 @@ public enum DateOnly {
         return date
     }
 
-    static func decode(_ container: KeyedDecodingContainer<TripDay.CodingKeys>, forKey key: TripDay.CodingKeys) throws -> Date {
-        let string = try container.decode(String.self, forKey: key)
+    static func decodeIfPresent<K: CodingKey>(_ container: KeyedDecodingContainer<K>, forKey key: K) throws -> Date? {
+        guard let string = try container.decodeIfPresent(String.self, forKey: key) else { return nil }
         guard let date = formatter.date(from: string) else {
             throw DecodingError.dataCorruptedError(forKey: key, in: container, debugDescription: "Invalid date-only format: \(string)")
         }

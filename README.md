@@ -1,4 +1,4 @@
-# Waypin
+# Flowney
 
 여행 중 데이터가 거의 없어도 동작하는 걸 목표로 만든 개인용 여행 일정/경로 앱.
 날짜별 일정을 지도 위에서 관리하고, 장소 간 실제 이동 경로(도보/대중교통/자동차)를
@@ -22,6 +22,10 @@
   균등 분할해서 표시한다. 여행에 등록되지 않은 나라 좌표는 경고 아이콘으로 표시.
 - **날씨**: 날짜별 대표 좌표 기준으로 예보를 가져와 날짜 탭에 아이콘으로 표시.
 - **예산**: 여행 항목별 비용/통화/결제상태 기록.
+- **메모/할 일**: 여행 단위로 메모와 체크리스트를 남기고, 할 일에는 기한을 지정할 수
+  있다(기본값은 기한없음). 기한을 지정하면 로컬 알림으로 리마인드.
+- **여행 공유**: 공개 또는 비밀번호 보호 링크를 발급해서 앱이 없어도 웹에서 일정을
+  볼 수 있게 공유(원가/결제상태 등 민감한 항목은 공유 뷰에서 제외).
 - **로그인**: Apple / Google 로그인.
 
 ## 아키텍처
@@ -30,7 +34,7 @@
 [The Composable Architecture](https://github.com/pointfreeco/swift-composable-architecture)(TCA) 사용.
 
 ```
-Waypin (App)
+Flowney (App)
 ├── ShareExtension        # 구글맵 공유 링크를 앱으로 넘기는 Share Extension
 ├── Features/
 │   ├── Root               # 로그인 여부에 따라 최상위 화면 분기
@@ -39,7 +43,8 @@ Waypin (App)
 │   ├── TripEdit             # 여행 생성/수정(나라 선택 등)
 │   ├── Itinerary            # 지도+일정 메인 화면(경로 탐색/애니메이션 포함)
 │   ├── AddItem              # 일정 항목 추가(링크 파싱/수동 입력)
-│   └── Budget                # 예산 관리
+│   ├── Budget                # 예산 관리
+│   └── Memo                  # 메모/할 일(기한·알림)
 └── Core/
     ├── Models              # Trip/TripDay/ItineraryItem/RouteLeg 등 공용 모델
     ├── APIClient            # Supabase 리포지토리 + 백엔드 API 클라이언트(TCA @DependencyClient)
@@ -68,7 +73,7 @@ Waypin (App)
 
 ```bash
 git clone <this repo>
-cd Waypin
+cd Flowney
 tuist install    # SwiftPM 의존성 설치
 tuist generate   # .xcworkspace 생성
 ```
@@ -92,8 +97,8 @@ Supabase 프로젝트에는 `mock-serverless/supabase/migrations`의 SQL을 순�
 ## 실행
 
 ```bash
-xcodebuild -workspace Waypin.xcworkspace -scheme Waypin \
+xcodebuild -workspace Flowney.xcworkspace -scheme Flowney \
   -destination 'generic/platform=iOS Simulator' build
 ```
 
-또는 `Waypin.xcworkspace`를 Xcode로 열어서 실행.
+또는 `Flowney.xcworkspace`를 Xcode로 열어서 실행.

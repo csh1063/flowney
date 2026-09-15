@@ -40,7 +40,7 @@ import PackageDescription
 #endif
 
 let package = Package(
-    name: "Waypin",
+    name: "Flowney",
     platforms: [.iOS(.v17)],
     dependencies: [
         .package(url: "https://github.com/pointfreeco/swift-composable-architecture", from: "1.17.0"),

@@ -15,15 +15,15 @@ public struct AccountInfoView: View {
             Section {
                 HStack {
                     Text("이메일")
-                        .font(WaypinFont.body)
-                        .foregroundStyle(WaypinTheme.textPrimary)
+                        .font(FlowneyFont.body)
+                        .foregroundStyle(FlowneyTheme.textPrimary)
                     Spacer()
                     Text(store.session?.user.email ?? "-")
-                        .font(WaypinFont.body)
-                        .foregroundStyle(WaypinTheme.textSecondary)
+                        .font(FlowneyFont.body)
+                        .foregroundStyle(FlowneyTheme.textSecondary)
                 }
-                .waypinCard()
-                .waypinCardListRow()
+                .flowneyCard()
+                .flowneyCardListRow()
             }
 
             Section {
@@ -32,23 +32,23 @@ public struct AccountInfoView: View {
                 } label: {
                     HStack {
                         Text("로그아웃")
-                            .font(WaypinFont.bodyEmphasis)
-                            .foregroundStyle(WaypinTheme.error)
+                            .font(FlowneyFont.bodyEmphasis)
+                            .foregroundStyle(FlowneyTheme.error)
                         Spacer()
                         if store.isLoading {
                             ProgressView()
                         }
                     }
-                    .waypinCard()
+                    .flowneyCard()
                 }
                 .buttonStyle(.plain)
                 .disabled(store.isLoading)
-                .waypinCardListRow()
+                .flowneyCardListRow()
             }
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .background(WaypinTheme.background)
-        .waypinLeadingTitle("회원정보")
+        .background(FlowneyTheme.background)
+        .flowneyLeadingTitle("회원정보")
     }
 }

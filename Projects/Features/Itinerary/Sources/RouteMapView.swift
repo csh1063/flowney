@@ -1,3 +1,4 @@
+import APIClient
 import ComposableArchitecture
 import CoreLocation
 import DesignSystem
@@ -9,6 +10,7 @@ import UIKit
 struct RouteMapView: UIViewRepresentable {
     let items: IdentifiedArrayOf<ItineraryItem>
     let legs: IdentifiedArrayOf<RouteLeg>
+    let countries: IdentifiedArrayOf<TripCountry>
     let currentStopIndex: Int?
     let animateTrigger: Int
     let jumpTrigger: Int
@@ -20,7 +22,7 @@ struct RouteMapView: UIViewRepresentable {
     func makeUIView(context: Context) -> GMSMapView {
         let options = GMSMapViewOptions()
         options.camera = GMSCameraPosition.camera(withLatitude: 37.5665, longitude: 126.9780, zoom: 12)
-        options.backgroundColor = WaypinTheme.backgroundUIColor
+        options.backgroundColor = FlowneyTheme.backgroundUIColor
         let mapView = GMSMapView(options: options)
         mapView.delegate = context.coordinator
         context.coordinator.mapView = mapView
@@ -36,6 +38,7 @@ struct RouteMapView: UIViewRepresentable {
         context.coordinator.update(
             items: items,
             legs: legs,
+            countries: countries,
             currentStopIndex: currentStopIndex,
             animateTrigger: animateTrigger,
             jumpTrigger: jumpTrigger,
@@ -46,6 +49,11 @@ struct RouteMapView: UIViewRepresentable {
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
+    }
+
+    static func dismantleUIView(_ mapView: GMSMapView, coordinator: Coordinator) {
+        coordinator.engine?.stop()
+        coordinator.engine = nil
     }
 
     @MainActor
@@ -106,6 +114,7 @@ struct RouteMapView: UIViewRepresentable {
             let length: Double
             let travelColor: UIColor
             let travelWidth: CGFloat
+            let mutedColor: UIColor
         }
         private struct LegPolylineGroup {
             var segments: [LegPolylineSegment]
@@ -113,11 +122,12 @@ struct RouteMapView: UIViewRepresentable {
         }
         private var legPolylineGroups: [String: LegPolylineGroup] = [:]
         private var highlightedLegID: String?
-        private var mutedPolylines: [(polyline: GMSPolyline, path: GMSPath)] = []
+        private var mutedPolylines: [(polyline: GMSPolyline, path: GMSPath, color: UIColor)] = []
 
         func update(
             items: IdentifiedArrayOf<ItineraryItem>,
             legs: IdentifiedArrayOf<RouteLeg>,
+            countries: IdentifiedArrayOf<TripCountry>,
             currentStopIndex: Int?,
             animateTrigger: Int,
             jumpTrigger: Int,
@@ -126,10 +136,13 @@ struct RouteMapView: UIViewRepresentable {
         ) {
             guard let mapView else { return }
 
-            let key = items.map(\.id.uuidString).joined(separator: ",") + "|" + legs.map(\.id).joined(separator: ",")
+            let itemsKey = items.map { "\($0.id.uuidString):\($0.countryCode ?? "")" }.joined(separator: ",")
+            let legsKey = legs.map(\.id).joined(separator: ",")
+            let countriesKey = countries.map { "\($0.countryCode):\($0.color)" }.joined(separator: ",")
+            let key = itemsKey + "|" + legsKey + "|" + countriesKey
             if key != drawnKey {
                 drawnKey = key
-                redraw(items: items, legs: legs, mapView: mapView)
+                redraw(items: items, legs: legs, countries: countries, mapView: mapView)
             }
 
             updateMarkerStyles(currentStopIndex: currentStopIndex, items: items)
@@ -174,10 +187,11 @@ struct RouteMapView: UIViewRepresentable {
 
         private static func pinColor(for itemType: ItemType) -> UIColor {
             switch itemType {
-            case .start: return WaypinTheme.brandNavyUIColor
+            case .airport: return UIColor(hex: "#4A6FA5")
             case .sight: return UIColor(hex: "#2F8F5B")
             case .meal: return UIColor(hex: "#F5A623")
-            case .lodge: return WaypinTheme.brandGoldUIColor
+            case .cafe: return UIColor(hex: "#8B5E3C")
+            case .lodge: return FlowneyTheme.brandGoldUIColor
             case .transport: return UIColor(hex: "#0072CE")
             case .activity: return UIColor(hex: "#8E44AD")
             case .shopping: return UIColor(hex: "#E85D9A")
@@ -285,7 +299,13 @@ struct RouteMapView: UIViewRepresentable {
             mapView.animate(with: GMSCameraUpdate.fit(bounds, with: edgeInsets))
         }
 
-        private func redraw(items: IdentifiedArrayOf<ItineraryItem>, legs: IdentifiedArrayOf<RouteLeg>, mapView: GMSMapView) {
+        private func redraw(
+            items: IdentifiedArrayOf<ItineraryItem>,
+            legs: IdentifiedArrayOf<RouteLeg>,
+            countries: IdentifiedArrayOf<TripCountry>,
+            mapView: GMSMapView
+        ) {
+            let countryColors = Dictionary(uniqueKeysWithValues: countries.map { ($0.countryCode, UIColor(hex: $0.color)) })
             markers.forEach { $0.map = nil }
             legPolylineGroups.values.forEach { group in group.segments.forEach { $0.polyline.map = nil } }
             alternativePolylines.forEach { $0.map = nil }
@@ -321,10 +341,11 @@ struct RouteMapView: UIViewRepresentable {
                 let leg = legs[id: "\(fromItem.id)-\(toItem.id)"]
                 let legKey = leg?.id ?? "\(fromItem.id)-\(toItem.id)"
                 let hasRealRoute = leg?.status == .ok
+                let mutedColor = fromItem.countryCode.flatMap { countryColors[$0] } ?? FlowneyTheme.brandNavyUIColor
 
                 let segments: [LegPolylineSegment]
                 if let leg, RoutePathDecoding.usesSteppedRendering(leg: leg, hasRealRoute: hasRealRoute) {
-                    segments = drawSteppedPolylines(for: leg, mapView: mapView)
+                    segments = drawSteppedPolylines(for: leg, mutedColor: mutedColor, mapView: mapView)
                 } else {
                     let decodedPoints = RoutePathDecoding.singlePolylinePoints(
                         leg: leg,
@@ -342,7 +363,7 @@ struct RouteMapView: UIViewRepresentable {
                     let travelColor: UIColor = isWalkMode ? Self.paletteColor(.walk) : (mode == .car ? .systemBlue : Self.paletteColor(mode))
                     let travelWidth: CGFloat = isWalkMode ? Self.walkStrokeWidth : Self.transitStrokeWidth
                     segments = [
-                        LegPolylineSegment(polyline: polyline, path: path, length: path.length(of: .rhumb), travelColor: travelColor, travelWidth: travelWidth),
+                        LegPolylineSegment(polyline: polyline, path: path, length: path.length(of: .rhumb), travelColor: travelColor, travelWidth: travelWidth, mutedColor: mutedColor),
                     ]
                 }
 
@@ -368,7 +389,7 @@ struct RouteMapView: UIViewRepresentable {
             fitAll(items: items, mapView: mapView)
         }
 
-        private func drawSteppedPolylines(for leg: RouteLeg, mapView: GMSMapView) -> [LegPolylineSegment] {
+        private func drawSteppedPolylines(for leg: RouteLeg, mutedColor: UIColor, mapView: GMSMapView) -> [LegPolylineSegment] {
             var previousStep: RouteStep?
             var result: [LegPolylineSegment] = []
             for step in leg.steps {
@@ -387,7 +408,7 @@ struct RouteMapView: UIViewRepresentable {
 
                 let polyline = GMSPolyline(path: decoded)
                 polyline.map = mapView
-                result.append(LegPolylineSegment(polyline: polyline, path: decoded, length: decoded.length(of: .rhumb), travelColor: color, travelWidth: width))
+                result.append(LegPolylineSegment(polyline: polyline, path: decoded, length: decoded.length(of: .rhumb), travelColor: color, travelWidth: width, mutedColor: mutedColor))
 
                 if let previousStep, Self.isModeChange(from: previousStep, to: step) {
                     addTransferMarker(at: decoded.coordinate(at: 0), color: color, mapView: mapView)
@@ -451,11 +472,11 @@ struct RouteMapView: UIViewRepresentable {
 
         private func setMuted(_ segment: LegPolylineSegment) {
             segment.polyline.strokeWidth = Self.mutedStrokeWidth
-            segment.polyline.strokeColor = Self.paletteColor(.walk)
+            segment.polyline.strokeColor = segment.mutedColor
             if !mutedPolylines.contains(where: { $0.polyline === segment.polyline }) {
-                mutedPolylines.append((segment.polyline, segment.path))
+                mutedPolylines.append((segment.polyline, segment.path, segment.mutedColor))
             }
-            Self.setDashSpans(on: segment.polyline, path: segment.path, zoom: mapView?.camera.zoom ?? 12)
+            Self.setDashSpans(on: segment.polyline, path: segment.path, color: segment.mutedColor, zoom: mapView?.camera.zoom ?? 12)
         }
 
         private func setTraveled(_ segment: LegPolylineSegment) {
@@ -505,12 +526,12 @@ struct RouteMapView: UIViewRepresentable {
         }
 
         private func refreshMutedDashLengths(zoom: Float) {
-            for (polyline, path) in mutedPolylines {
-                Self.setDashSpans(on: polyline, path: path, zoom: zoom)
+            for (polyline, path, color) in mutedPolylines {
+                Self.setDashSpans(on: polyline, path: path, color: color, zoom: zoom)
             }
         }
 
-        private static func setDashSpans(on polyline: GMSPolyline, path: GMSPath, zoom: Float) {
+        private static func setDashSpans(on polyline: GMSPolyline, path: GMSPath, color: UIColor, zoom: Float) {
             guard zoom.isFinite else { return }
 
             let pathLength = path.length(of: .rhumb)
@@ -527,13 +548,13 @@ struct RouteMapView: UIViewRepresentable {
                 : max(screenScaledLength, 1)
             guard dashLength.isFinite, dashLength > 0 else { return }
 
-            let styles = [GMSStrokeStyle.solidColor(paletteColor(.walk)), GMSStrokeStyle.solidColor(.clear)]
+            let styles = [GMSStrokeStyle.solidColor(color), GMSStrokeStyle.solidColor(.clear)]
             polyline.spans = GMSStyleSpans(path, styles, [NSNumber(value: dashLength), NSNumber(value: dashLength)], .rhumb)
         }
 
         private static func paletteColor(_ mode: TransportMode) -> UIColor {
             switch mode {
-            case .walk: return WaypinTheme.brandNavyUIColor
+            case .walk: return FlowneyTheme.brandNavyUIColor
             case .metro: return UIColor(hex: "#0072CE")
             case .tram: return UIColor(hex: "#00A651")
             case .bus: return UIColor(hex: "#F5A623")
@@ -555,6 +576,7 @@ struct RouteMapView: UIViewRepresentable {
         func mapView(_ mapView: GMSMapView, idleAt position: GMSCameraPosition) {
             refreshMutedDashLengths(zoom: position.zoom)
             engine?.cameraDidBecomeIdle()
+            LastMapCameraStore.save(lat: position.target.latitude, lng: position.target.longitude)
         }
     }
 }

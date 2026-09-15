@@ -10,20 +10,25 @@ public struct MyPageView: View {
     let currentTripID: Trip.ID?
     @Binding var isSubpagePresented: Bool
     @Binding var autoOpenShareInbox: Bool
+    let onAddItemRequested: (AddItemFromShareRequest, _ onAdded: @escaping () -> Void) -> Void
 
     @State private var isAccountInfoPresented = false
     @State private var shareInboxStore: StoreOf<ShareInboxFeature>?
+    @State private var isAppearanceSheetPresented = false
+    @AppStorage(AppearanceMode.storageKey) private var appearanceModeRaw: String = AppearanceMode.system.rawValue
 
     public init(
         store: StoreOf<AuthFeature>,
         currentTripID: Trip.ID? = nil,
         isSubpagePresented: Binding<Bool> = .constant(false),
-        autoOpenShareInbox: Binding<Bool> = .constant(false)
+        autoOpenShareInbox: Binding<Bool> = .constant(false),
+        onAddItemRequested: @escaping (AddItemFromShareRequest, _ onAdded: @escaping () -> Void) -> Void = { _, _ in }
     ) {
         self.store = store
         self.currentTripID = currentTripID
         self._isSubpagePresented = isSubpagePresented
         self._autoOpenShareInbox = autoOpenShareInbox
+        self.onAddItemRequested = onAddItemRequested
     }
 
     public var body: some View {
@@ -33,23 +38,23 @@ public struct MyPageView: View {
                     isAccountInfoPresented = true
                 } label: {
                     HStack {
-                        VStack(alignment: .leading, spacing: WaypinSpacing.xs) {
+                        VStack(alignment: .leading, spacing: FlowneySpacing.xs) {
                             Text(providerDisplayName)
-                                .font(WaypinFont.sectionHeader)
-                                .foregroundStyle(WaypinTheme.textPrimary)
-                            Text("Waypin 계정")
-                                .font(WaypinFont.caption)
-                                .foregroundStyle(WaypinTheme.textSecondary)
+                                .font(FlowneyFont.sectionHeader)
+                                .foregroundStyle(FlowneyTheme.textPrimary)
+                            Text("Flowney 계정")
+                                .font(FlowneyFont.caption)
+                                .foregroundStyle(FlowneyTheme.textSecondary)
                         }
                         Spacer()
                         Image(systemName: "chevron.right")
                             .font(.caption)
-                            .foregroundStyle(WaypinTheme.textSecondary)
+                            .foregroundStyle(FlowneyTheme.textSecondary)
                     }
-                    .waypinCard()
+                    .flowneyCard()
                 }
                 .buttonStyle(.plain)
-                .waypinCardListRow()
+                .flowneyCardListRow()
             }
 
             Section("일정") {
@@ -58,52 +63,74 @@ public struct MyPageView: View {
                 } label: {
                     HStack {
                         Text("공유 링크함")
-                            .font(WaypinFont.body)
-                            .foregroundStyle(WaypinTheme.textPrimary)
+                            .font(FlowneyFont.body)
+                            .foregroundStyle(FlowneyTheme.textPrimary)
                         if unusedShareCount > 0 {
                             Text("\(unusedShareCount)")
-                                .font(WaypinFont.captionEmphasis)
-                                .foregroundStyle(WaypinTheme.accentLabel)
+                                .font(FlowneyFont.captionEmphasis)
+                                .foregroundStyle(FlowneyTheme.accentLabel)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
-                                .background(WaypinTheme.accent, in: Capsule())
+                                .background(FlowneyTheme.accent, in: Capsule())
                         }
                         Spacer()
                         Image(systemName: "chevron.right")
                             .font(.caption)
-                            .foregroundStyle(WaypinTheme.textSecondary)
+                            .foregroundStyle(FlowneyTheme.textSecondary)
                     }
-                    .waypinCard()
+                    .flowneyCard()
                 }
                 .buttonStyle(.plain)
-                .waypinCardListRow()
+                .flowneyCardListRow()
+            }
+
+            Section("화면") {
+                Button {
+                    isAppearanceSheetPresented = true
+                } label: {
+                    HStack {
+                        Text("화면 모드")
+                            .font(FlowneyFont.body)
+                            .foregroundStyle(FlowneyTheme.textPrimary)
+                        Spacer()
+                        Text(currentAppearanceMode.displayName)
+                            .font(FlowneyFont.body)
+                            .foregroundStyle(FlowneyTheme.textSecondary)
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(FlowneyTheme.textSecondary)
+                    }
+                    .flowneyCard()
+                }
+                .buttonStyle(.plain)
+                .flowneyCardListRow()
             }
 
             Section("약관 및 정책") {
-                VStack(spacing: WaypinSpacing.md) {
+                VStack(spacing: FlowneySpacing.md) {
                     ForEach(Array(MyPageMenuItem.placeholderItems.enumerated()), id: \.element.id) { index, item in
                         if index > 0 {
                             Divider()
                         }
                         HStack {
                             Text(item.title)
-                                .font(WaypinFont.body)
-                                .foregroundStyle(WaypinTheme.textPrimary)
+                                .font(FlowneyFont.body)
+                                .foregroundStyle(FlowneyTheme.textPrimary)
                             Spacer()
                             Text("준비중")
-                                .font(WaypinFont.caption)
-                                .foregroundStyle(WaypinTheme.textSecondary)
+                                .font(FlowneyFont.caption)
+                                .foregroundStyle(FlowneyTheme.textSecondary)
                         }
                     }
                 }
-                .waypinCard()
-                .waypinCardListRow()
+                .flowneyCard()
+                .flowneyCardListRow()
             }
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .background(WaypinTheme.background)
-        .waypinLeadingTitle("마이페이지")
+        .background(FlowneyTheme.background)
+        .flowneyLeadingTitle("마이페이지")
         .navigationDestination(isPresented: $isAccountInfoPresented) {
             AccountInfoView(store: store)
                 .onAppear { isSubpagePresented = true }
@@ -118,13 +145,67 @@ public struct MyPageView: View {
             )
         ) {
             if let shareInboxStore {
-                ShareInboxView(store: shareInboxStore)
+                ShareInboxView(store: shareInboxStore, onAddItemRequested: onAddItemRequested)
                     .onAppear { isSubpagePresented = true }
                     .onDisappear { isSubpagePresented = false }
             }
         }
         .onAppear { applyAutoOpenShareInboxIfNeeded() }
         .onChange(of: autoOpenShareInbox) { _, _ in applyAutoOpenShareInboxIfNeeded() }
+        .sheet(isPresented: $isAppearanceSheetPresented) {
+            appearanceSheet
+                .presentationDetents([.height(232)])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(FlowneyTheme.surface)
+        }
+        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 20) }
+        .flowneyLifecycleLog(category: .auth)
+    }
+
+    private var appearanceSheet: some View {
+        VStack(spacing: 0) {
+            Text("화면 모드")
+                .font(FlowneyFont.sectionHeader)
+                .foregroundStyle(FlowneyTheme.textPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, FlowneySpacing.lg)
+                .padding(.top, FlowneySpacing.md)
+                .padding(.bottom, FlowneySpacing.sm)
+
+            ForEach(AppearanceMode.allCases, id: \.self) { mode in
+                Button {
+                    appearanceModeRaw = mode.rawValue
+                    isAppearanceSheetPresented = false
+                } label: {
+                    HStack {
+                        Text(mode.displayName)
+                            .font(FlowneyFont.body)
+                            .foregroundStyle(FlowneyTheme.textPrimary)
+                        Spacer()
+                        if currentAppearanceMode == mode {
+                            Image(systemName: "checkmark")
+                                .foregroundStyle(FlowneyTheme.accent)
+                        }
+                    }
+                    .padding(.vertical, 14)
+                    .padding(.horizontal, FlowneySpacing.lg)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                if mode != AppearanceMode.allCases.last {
+                    Divider().padding(.leading, FlowneySpacing.lg)
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(FlowneyTheme.surface)
+    }
+
+    private var currentAppearanceMode: AppearanceMode {
+        AppearanceMode(rawValue: appearanceModeRaw) ?? .system
     }
 
     private func openShareInbox() {

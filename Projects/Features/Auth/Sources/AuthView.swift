@@ -16,11 +16,11 @@ public struct AuthView: View {
             Spacer()
 
             VStack(spacing: 8) {
-                Text("Waypin")
-                    .font(.largeTitle.bold())
+                Text("Flowney")
+                    .font(FlowneyFont.screenTitle)
                 Text("여행의 모든 순간을 하나의 경로로")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(FlowneyFont.body)
+                    .foregroundStyle(FlowneyTheme.textSecondary)
             }
 
             Spacer()
@@ -36,32 +36,51 @@ public struct AuthView: View {
                 }
                 .signInWithAppleButtonStyle(.black)
                 .frame(height: 50)
+                .disabled(store.isLoading)
 
                 Button {
                     store.send(.signInWithGoogleTapped)
                 } label: {
-                    HStack {
-                        Image(systemName: "g.circle.fill")
+                    HStack(spacing: 10) {
+                        Image("GoogleLogo")
+                            .resizable()
+                            .frame(width: 20, height: 20)
                         Text("Google로 계속하기")
-                            .fontWeight(.medium)
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundStyle(Color(light: "#1F1F1F", dark: "#E3E3E3"))
                     }
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
+                    .background(Color(light: "#FFFFFF", dark: "#131314"))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .strokeBorder(Color(light: "#747775", dark: "#8E918F"), lineWidth: 1)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .contentShape(RoundedRectangle(cornerRadius: 10))
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.plain)
                 .disabled(store.isLoading)
+
+                if store.isLoading {
+                    ProgressView()
+                        .padding(.top, 4)
+                }
             }
             .padding(.horizontal, 24)
 
             if let errorMessage = store.errorMessage {
                 Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
+                    .font(FlowneyFont.caption)
+                    .foregroundStyle(FlowneyTheme.error)
                     .padding(.horizontal, 24)
             }
 
             Spacer()
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(FlowneyTheme.background)
+        .ignoresSafeArea(edges: .bottom)
     }
 
     private func handleAppleCompletion(_ result: Result<ASAuthorization, any Error>) {
