@@ -10,29 +10,7 @@ let project = Project(
             product: .app,
             bundleId: Constants.bundleIdPrefix,
             deploymentTargets: Constants.deploymentTargets,
-            infoPlist: .extendingDefault(
-                with: [
-                    "UILaunchScreen": [
-                        "UIColorName": "",
-                        "UIImageName": "",
-                    ],
-                    "CFBundleURLTypes": [
-                        [
-                            "CFBundleURLSchemes": ["$(GOOGLE_REVERSED_CLIENT_ID)"],
-                        ],
-                    ],
-                    "LSApplicationQueriesSchemes": ["comgooglemaps"],
-                    "NSLocationWhenInUseUsageDescription": "여행 경로와 현재 위치를 지도에 표시하기 위해 위치 정보를 사용합니다.",
-                    "GMSApiKey": "$(GOOGLE_MAPS_API_KEY)",
-                    "GIDClientID": "$(GOOGLE_IOS_CLIENT_ID)",
-                    "SupabaseHost": "$(SUPABASE_HOST)",
-                    "SupabaseAnonKey": "$(SUPABASE_ANON_KEY)",
-                    "UIAppFonts": [
-                        "GothicA1-Regular.ttf",
-                        "GothicA1-SemiBold.ttf",
-                    ],
-                ]
-            ),
+            infoPlist: .file(path: "Info.plist"),
             sources: ["Sources/**"],
             resources: [
                 "Resources/**",
