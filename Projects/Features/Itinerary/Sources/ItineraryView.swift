@@ -11,16 +11,21 @@ public struct ItineraryView: View {
     @State private var shareStore: StoreOf<TripShareFeature>?
     @State private var addItemFlowStore: StoreOf<AddItemFlowFeature>?
     @State private var isListSheetPresented = false
+    @State private var isTripListSheetPresented = false
     @State private var sheetDetent: PresentationDetent = .height(Self.expandedListHeight)
-    let onTripListRequested: () -> Void
+    @State private var bottomSafeAreaInset: CGFloat = 0
+    let tripListSheetContent: (_ onTripSelected: @escaping () -> Void) -> AnyView
 
     private let dayColumnWidth: CGFloat = 64
     private static let expandedListHeight: CGFloat = 228
     private static let collapsedListHeight: CGFloat = 128
 
-    public init(store: StoreOf<ItineraryFeature>, onTripListRequested: @escaping () -> Void) {
+    public init(
+        store: StoreOf<ItineraryFeature>,
+        tripListSheetContent: @escaping (_ onTripSelected: @escaping () -> Void) -> AnyView
+    ) {
         self.store = store
-        self.onTripListRequested = onTripListRequested
+        self.tripListSheetContent = tripListSheetContent
     }
 
     private var currentListHeight: CGFloat {
@@ -52,18 +57,23 @@ public struct ItineraryView: View {
             }
             .animation(.easeInOut(duration: 0.25), value: currentListHeight)
         }
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.safeAreaInsets.bottom
+        } action: { newValue in
+            bottomSafeAreaInset = newValue
+        }
         .overlay(alignment: .bottomTrailing) {
             if store.trip != nil {
                 controlBar
                     .padding(.trailing, 16)
-                    .padding(.bottom, max(24, currentListHeight - UIApplication.shared.keyWindowSafeAreaInsets.bottom))
+                    .padding(.bottom, max(80, currentListHeight - bottomSafeAreaInset + 64))
             }
         }
         .overlay(alignment: .bottomLeading) {
             if store.trip != nil, let label = activeRefreshLabel {
                 RefreshStatusLabel(text: label)
                     .padding(.leading, 16)
-                    .padding(.bottom, max(24, currentListHeight - UIApplication.shared.keyWindowSafeAreaInsets.bottom))
+                    .padding(.bottom, max(80, currentListHeight - bottomSafeAreaInset) + 64)
             }
         }
         .flowneyLeadingTitle(store.trip?.name ?? "Flowney")
@@ -112,7 +122,7 @@ public struct ItineraryView: View {
 
                         Section("여행 관리") {
                             Button {
-                                onTripListRequested()
+                                isTripListSheetPresented = true
                             } label: {
                                 Label("여행 목록", systemImage: "list.bullet")
                             }
@@ -146,6 +156,9 @@ public struct ItineraryView: View {
         .onAppear {
             store.send(.onAppear)
         }
+        .onDisappear {
+            isListSheetPresented = false
+        }
         .onChange(of: store.addItemFlowRequest) { _, request in
             guard let request else { return }
             addItemFlowStore = Store(initialState: request) { AddItemFlowFeature() }
@@ -170,33 +183,33 @@ public struct ItineraryView: View {
         }
         .sheet(
             isPresented: Binding(
-                get: { editStore != nil },
+                get: { editStore != nil && !isListSheetPresented },
                 set: { isPresented in
                     if !isPresented { editStore = nil }
                 }
             )
         ) {
-            if let editStore {
-                TripEditView(store: editStore)
-                    .onChange(of: editStore.savedTrip) { _, savedTrip in
-                        if let savedTrip {
-                            store.send(.tripSelected(savedTrip))
-                            self.editStore = nil
-                        }
-                    }
-            }
+            editSheetContent
         }
         .sheet(
             isPresented: Binding(
-                get: { shareStore != nil },
+                get: { shareStore != nil && !isListSheetPresented },
                 set: { isPresented in
                     if !isPresented { shareStore = nil }
                 }
             )
         ) {
-            if let shareStore {
-                TripShareView(store: shareStore)
-            }
+            shareSheetContent
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { isTripListSheetPresented && !isListSheetPresented },
+                set: { isPresented in
+                    if !isPresented { isTripListSheetPresented = false }
+                }
+            )
+        ) {
+            tripListSheetContent { isTripListSheetPresented = false }
         }
 //        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 20) }
         .flowneyLifecycleLog(category: .itinerary)
@@ -221,7 +234,7 @@ public struct ItineraryView: View {
 
     private var loadTripButton: some View {
         Button {
-            onTripListRequested()
+            isTripListSheetPresented = true
         } label: {
             Label("여행 불러오기", systemImage: "airplane")
         }
@@ -469,6 +482,36 @@ public struct ItineraryView: View {
         ) {
             addItemFlowSheetContent
         }
+        .sheet(
+            isPresented: Binding(
+                get: { editStore != nil && isListSheetPresented },
+                set: { isPresented in
+                    if !isPresented { editStore = nil }
+                }
+            )
+        ) {
+            editSheetContent
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { shareStore != nil && isListSheetPresented },
+                set: { isPresented in
+                    if !isPresented { shareStore = nil }
+                }
+            )
+        ) {
+            shareSheetContent
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { isTripListSheetPresented && isListSheetPresented },
+                set: { isPresented in
+                    if !isPresented { isTripListSheetPresented = false }
+                }
+            )
+        ) {
+            tripListSheetContent { isTripListSheetPresented = false }
+        }
     }
 
     private var allViewRowID: String { "__all__" }
@@ -486,15 +529,25 @@ public struct ItineraryView: View {
             )
         }
     }
-}
 
-extension UIApplication {
-    var keyWindowSafeAreaInsets: UIEdgeInsets {
-        guard let scene = connectedScenes.first as? UIWindowScene,
-              let window = scene.windows.first(where: { $0.isKeyWindow }) else {
-            return .zero
+    @ViewBuilder
+    private var editSheetContent: some View {
+        if let editStore {
+            TripEditView(store: editStore)
+                .onChange(of: editStore.savedTrip) { _, savedTrip in
+                    if let savedTrip {
+                        store.send(.tripSelected(savedTrip))
+                        self.editStore = nil
+                    }
+                }
         }
-        return window.safeAreaInsets
+    }
+
+    @ViewBuilder
+    private var shareSheetContent: some View {
+        if let shareStore {
+            TripShareView(store: shareStore)
+        }
     }
 }
 

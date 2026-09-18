@@ -56,6 +56,7 @@ public struct CostInputSection: View {
                     Text(category.displayName).tag(CostCategory?.some(category))
                 }
             }
+            .pickerStyle(.menu)
 
             Picker("결제 상태", selection: $paymentStatus) {
                 Text("선택 안 함").tag(PaymentStatus?.none)
@@ -63,6 +64,7 @@ public struct CostInputSection: View {
                     Text(status.displayName).tag(PaymentStatus?.some(status))
                 }
             }
+            .pickerStyle(.menu)
         }
     }
 

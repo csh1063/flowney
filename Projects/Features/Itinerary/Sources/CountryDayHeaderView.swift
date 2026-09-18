@@ -20,14 +20,16 @@ struct CountryDayHeaderView: View {
             ForEach(segments) { segment in
                 let color = segment.countryCode.map(countryColor) ?? Color.gray.opacity(0.35)
                 HStack(spacing: 3) {
-                    if let code = segment.countryCode {
-                        Text(CountryCatalog.flagEmoji(for: code))
-                            .font(.system(size: 11))
+                    if segment.width >= dayColumnWidth * 2 {
+                        if let code = segment.countryCode {
+                            Text(CountryCatalog.flagEmoji(for: code))
+                                .font(.system(size: 11))
+                        }
+                        Text(segment.countryCode.flatMap { CountryCatalog.option(for: $0)?.name } ?? segment.countryCode ?? "")
+                            .font(FlowneyFont.captionEmphasis)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
                     }
-                    Text(segment.countryCode.flatMap { CountryCatalog.option(for: $0)?.name } ?? segment.countryCode ?? "")
-                        .font(FlowneyFont.captionEmphasis)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
                 }
                 .foregroundStyle(.white)
                 .frame(width: segment.width, height: 22)

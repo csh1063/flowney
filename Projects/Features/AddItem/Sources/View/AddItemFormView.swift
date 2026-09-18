@@ -10,7 +10,17 @@ struct AddItemFormView: View {
     @State private var isCurrencyManagementPresented = false
     @State private var isMapPickerPresented = false
     @State private var tripCurrencies: [String] = []
+    @State private var reuseSearchText = ""
     @FocusState private var isTextFieldFocused: Bool
+
+    private var filteredReuseCandidates: [ItineraryItem] {
+        let query = reuseSearchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return store.dedupedReuseCandidates }
+        return store.dedupedReuseCandidates.filter {
+            $0.name.localizedCaseInsensitiveContains(query)
+                || ($0.address?.localizedCaseInsensitiveContains(query) ?? false)
+        }
+    }
 
     private var showsDetailFields: Bool {
         store.editingOriginalItem != nil || store.resolvedLat != nil
@@ -100,7 +110,35 @@ struct AddItemFormView: View {
                             .font(FlowneyFont.caption)
                             .foregroundStyle(FlowneyTheme.textSecondary)
                     } else {
-                        ForEach(store.dedupedReuseCandidates) { candidate in
+                        HStack {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundStyle(FlowneyTheme.textSecondary)
+                            TextField("이름/주소로 검색", text: $reuseSearchText)
+                                .focused($isTextFieldFocused)
+                                .onChange(of: reuseSearchText) {
+                                    // 검색 결과 수가 바뀌면서 리스트 높이가 변하면 Form이 이를
+                                    // 스크롤로 감지해서 .scrollDismissesKeyboard(.immediately)가
+                                    // 키보드를 내려버린다 — 타이핑 직후 포커스를 다시 걸어서 막는다.
+                                    isTextFieldFocused = true
+                                }
+                            if !reuseSearchText.isEmpty {
+                                Button {
+                                    reuseSearchText = ""
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(FlowneyTheme.textSecondary)
+                                }
+                                .buttonStyle(.borderless)
+                            }
+                        }
+
+                        if filteredReuseCandidates.isEmpty {
+                            Text("검색 결과가 없어요.")
+                                .font(FlowneyFont.caption)
+                                .foregroundStyle(FlowneyTheme.textSecondary)
+                        }
+
+                        ForEach(filteredReuseCandidates) { candidate in
                             Button {
                                 isTextFieldFocused = false
                                 store.send(.reuseCandidateTapped(candidate))
@@ -131,8 +169,19 @@ struct AddItemFormView: View {
 
             if showsDetailFields {
                 Section("일정") {
-                    TextField("이름 (예: 루브르 박물관, 점심 식사)", text: $store.name)
-                        .focused($isTextFieldFocused)
+                    HStack {
+                        TextField("이름 (예: 루브르 박물관, 점심 식사)", text: $store.name)
+                            .focused($isTextFieldFocused)
+                        if !store.name.isEmpty {
+                            Button {
+                                store.name = ""
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(FlowneyTheme.textSecondary)
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                    }
 
                     Picker("종류", selection: $store.itemType) {
                         ForEach(ItemType.allCases, id: \.self) { type in
