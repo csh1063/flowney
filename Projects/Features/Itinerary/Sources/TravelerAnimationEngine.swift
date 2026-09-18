@@ -47,6 +47,7 @@ final class TravelerAnimationEngine {
         cameraIdleTimeoutWorkItem?.cancel()
         cameraIdleTimeoutWorkItem = nil
         pendingCameraIdle = nil
+        travelerMarker.map = nil
     }
 
     func animate(
@@ -114,6 +115,7 @@ final class TravelerAnimationEngine {
         guard myGen == generation else { return }
         guard segmentIndex < segments.count else {
             onProgress?(1.0)
+            travelerMarker.map = nil
             let completion = onCompleted
             onCompleted = nil
             completion?()

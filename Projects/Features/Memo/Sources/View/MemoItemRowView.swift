@@ -22,14 +22,14 @@ struct MemoItemRowView: View {
                     Image(systemName: item.isDone ? "checkmark.circle.fill" : "circle")
                         .foregroundStyle(item.isDone ? FlowneyTheme.accent : FlowneyTheme.textSecondary)
                         .font(.system(size: 20))
-                        .frame(width: 40, height: 40)
+                        .frame(width: 32, height: 32)
                 }
                 .buttonStyle(.plain)
             } else {
                 Image(systemName: "text.alignleft")
                     .foregroundStyle(FlowneyTheme.textSecondary)
                     .font(.system(size: 18))
-                    .frame(width: 20)
+                    .frame(width: 32, height: 32)
             }
 
             Text(item.text)
@@ -47,7 +47,7 @@ struct MemoItemRowView: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(.vertical, FlowneySpacing.xs)
+//        .padding(.vertical, FlowneySpacing.xs)
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive, action: onDelete) {
                 Label("삭제", systemImage: "trash")

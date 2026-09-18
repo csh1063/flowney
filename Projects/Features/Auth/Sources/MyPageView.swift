@@ -158,7 +158,7 @@ public struct MyPageView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(FlowneyTheme.surface)
         }
-        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 20) }
+//        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 20) }
         .flowneyLifecycleLog(category: .auth)
     }
 

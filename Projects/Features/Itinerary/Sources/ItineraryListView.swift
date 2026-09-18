@@ -44,6 +44,7 @@ public struct ItineraryListView: View {
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
                 .scrollIndicators(.hidden)
+                .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 72) }
             }
         }
         .background(FlowneyTheme.background)
@@ -100,7 +101,6 @@ public struct ItineraryListView: View {
                 )
             }
         }
-//        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 48) }
         .confirmationDialog(
             "이 일정을 삭제할까요?",
             isPresented: Binding(

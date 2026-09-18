@@ -9,6 +9,7 @@ import Memo
 import Models
 import SwiftUI
 import TripList
+import UIKit
 
 public struct RootView: View {
     private enum Tab: CaseIterable {
@@ -115,10 +116,8 @@ public struct RootView: View {
                             tabView(for: tab)
                         }
                         .tag(tab)
-                        .toolbarBackground(.hidden, for: .tabBar)
                     }
                 }
-                .toolbar(.hidden, for: .tabBar)
 
                 if !(selectedTab == .myPage && isMyPageSubpagePresented) {
                     floatingTabBar
@@ -151,6 +150,9 @@ public struct RootView: View {
                     )
                 }
             }
+            .sheet(isPresented: $isTripLoaderPresented) {
+                tripLoaderSheet
+            }
     }
     
     @ViewBuilder
@@ -164,7 +166,8 @@ public struct RootView: View {
             case .myPage: myTab
             }
         }
-        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 20) }
+        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 4) }
+        .background(NativeTabBarHider())
     }
 
     private var floatingTabBar: some View {
@@ -227,12 +230,15 @@ public struct RootView: View {
     }
 
     private var mapTab: some View {
-//        NavigationStack {
-            ItineraryView(store: itineraryStore) {
-                isTripLoaderPresented = true
-            }
-        .sheet(isPresented: $isTripLoaderPresented) {
-            tripLoaderSheet
+        ItineraryView(store: itineraryStore) { onTripSelected in
+            AnyView(
+                NavigationStack {
+                    TripListView(store: store.scope(state: \.tripList, action: \.tripList)) { trip in
+                        selectTrip(trip)
+                        onTripSelected()
+                    }
+                }
+            )
         }
     }
 
@@ -262,12 +268,16 @@ public struct RootView: View {
         currentTrip = trip
         LastTripStore.save(tripID: trip.id)
         itineraryStore.send(.tripSelected(trip))
-        budgetStore = Store(initialState: BudgetFeature.State(trip: trip)) {
+        let newBudgetStore = Store(initialState: BudgetFeature.State(trip: trip)) {
             BudgetFeature()
         }
-        memoStore = Store(initialState: MemoFeature.State(trip: trip)) {
+        newBudgetStore.send(.onAppear)
+        budgetStore = newBudgetStore
+        let newMemoStore = Store(initialState: MemoFeature.State(trip: trip)) {
             MemoFeature()
         }
+        newMemoStore.send(.onAppear)
+        memoStore = newMemoStore
     }
 
     private var listTab: some View {
@@ -328,5 +338,26 @@ public struct RootView: View {
                 ) { AddItemFlowFeature() }
             }
         )
+    }
+}
+
+/// `UITabBar.appearance().isHidden`은 `isHidden`이 UIAppearance 프록시 대상 속성이
+/// 아니라서 아무 효과가 없다 — 실제 `UITabBarController`를 찾아 `.tabBar.isHidden`을
+/// 직접 설정해야 한다. 이 뷰가 탭 콘텐츠 안에 심어져야(TabView 하위 계층에 있어야)
+/// `self.tabBarController`가 SwiftUI TabView가 만든 실제 컨트롤러로 resolve된다.
+private struct NativeTabBarHider: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> UIViewController {
+        HiderViewController()
+    }
+
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
+        uiViewController.tabBarController?.tabBar.isHidden = true
+    }
+
+    private final class HiderViewController: UIViewController {
+        override func viewWillLayoutSubviews() {
+            super.viewWillLayoutSubviews()
+            tabBarController?.tabBar.isHidden = true
+        }
     }
 }

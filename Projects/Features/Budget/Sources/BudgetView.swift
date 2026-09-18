@@ -153,6 +153,7 @@ public struct BudgetView: View {
             }
         }
         .listStyle(.plain)
+        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: 72) }
         .scrollContentBackground(.hidden)
         .background(FlowneyTheme.background)
         .flowneyLeadingTitle(store.trip.name)

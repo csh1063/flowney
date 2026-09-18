@@ -55,10 +55,14 @@ public struct AddItemFlowView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(leadingButtonTitle) {
-                        if isLeadingButtonCancel {
+                    if isLeadingButtonCancel {
+                        Button {
                             onCancelled()
-                        } else {
+                        } label: {
+                            Image(systemName: "xmark")
+                        }
+                    } else {
+                        Button("뒤로") {
                             store.send(.backToFormTapped)
                         }
                     }
@@ -108,9 +112,5 @@ public struct AddItemFlowView: View {
 
     private var isLeadingButtonCancel: Bool {
         store.step == .form || addItemStore == nil
-    }
-
-    private var leadingButtonTitle: String {
-        isLeadingButtonCancel ? "취소" : "뒤로"
     }
 }
