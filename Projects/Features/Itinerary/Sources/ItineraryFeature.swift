@@ -120,6 +120,7 @@ public struct ItineraryFeature {
         case onAppear
         case daysResponse(Result<[TripDay], any Error>)
         case itemsResponse(Result<[ItineraryItem], any Error>)
+        case cachedItemsLoaded([ItineraryItem])
         case entriesResponse(Result<[BudgetEntry], any Error>)
         case countriesResponse(Result<[TripCountry], any Error>)
         case weatherResponse(TripDay.ID, Result<DayWeather, any Error>)
@@ -171,6 +172,7 @@ public struct ItineraryFeature {
     @Dependency(\.routeCacheClient) var routeCacheClient
     @Dependency(\.weatherAPIClient) var weatherAPIClient
     @Dependency(\.countryLookupClient) var countryLookupClient
+    @Dependency(\.offlineCacheClient) var offlineCacheClient
 
     public init() {}
 
@@ -208,13 +210,38 @@ public struct ItineraryFeature {
                 guard let tripID = state.trip?.id else { return .none }
                 FlowneyLog.debug("onAppear trip=\(tripID)", category: .itinerary)
                 state.isLoading = true
-                let cachedWeatherDayIDs = Set(state.weatherByDay.keys)
+                let inMemoryWeatherDayIDs = Set(state.weatherByDay.keys)
                 return .run { send in
+                    // 오프라인이거나 네트워크가 느릴 때 즉시 보여줄 수 있도록 캐시를 먼저 반영한다.
+                    if let cachedDays = await offlineCacheClient.loadCodable([TripDay].self, key: OfflineCacheKey.days(tripID)) {
+                        await send(.daysResponse(.success(cachedDays)))
+                    }
+                    if let cachedItems = await offlineCacheClient.loadCodable([ItineraryItem].self, key: OfflineCacheKey.items(tripID)) {
+                        await send(.cachedItemsLoaded(cachedItems))
+                    }
+                    if let cachedCountries = await offlineCacheClient.loadCodable([TripCountry].self, key: OfflineCacheKey.countries(tripID)) {
+                        await send(.countriesResponse(.success(cachedCountries)))
+                    }
+                    if let cachedEntries = await offlineCacheClient.loadCodable([BudgetEntry].self, key: OfflineCacheKey.budgetEntries(tripID)) {
+                        await send(.entriesResponse(.success(cachedEntries)))
+                    }
+
+                    // 저장된 날씨가 있는 날짜는 온라인이어도 다시 안 받아온다 — 저장분이
+                    // 없는 날짜만 새로 받아오도록 스킵 대상에 합친다.
+                    var cachedWeatherDayIDs = inMemoryWeatherDayIDs
+                    if let cachedWeather = await offlineCacheClient.loadCodable([TripDay.ID: DayWeather].self, key: OfflineCacheKey.weather(tripID)) {
+                        for (dayID, weather) in cachedWeather {
+                            await send(.weatherResponse(dayID, .success(weather)))
+                        }
+                        cachedWeatherDayIDs.formUnion(cachedWeather.keys)
+                    }
+
                     var days: [TripDay] = []
                     do {
                         days = try await tripsRepository.fetchDays(tripID)
                         FlowneyLog.debug("fetchDays succeeded count=\(days.count)", category: .itinerary)
                         await send(.daysResponse(.success(days)))
+                        await offlineCacheClient.saveCodable(days, key: OfflineCacheKey.days(tripID))
                     } catch {
                         FlowneyLog.error("fetchDays failed: \(error)", category: .itinerary)
                         await send(.daysResponse(.failure(error)))
@@ -225,6 +252,7 @@ public struct ItineraryFeature {
                         items = try await itineraryRepository.fetchAllItems(tripID)
                         FlowneyLog.debug("fetchAllItems succeeded count=\(items.count)", category: .itinerary)
                         await send(.itemsResponse(.success(items)))
+                        await offlineCacheClient.saveCodable(items, key: OfflineCacheKey.items(tripID))
                     } catch {
                         FlowneyLog.error("fetchAllItems failed: \(error)", category: .itinerary)
                         await send(.itemsResponse(.failure(error)))
@@ -233,6 +261,7 @@ public struct ItineraryFeature {
                     do {
                         let countries = try await tripsRepository.fetchCountries(tripID)
                         await send(.countriesResponse(.success(countries)))
+                        await offlineCacheClient.saveCodable(countries, key: OfflineCacheKey.countries(tripID))
                     } catch {
                         FlowneyLog.error("fetchCountries failed: \(error)", category: .itinerary)
                         await send(.countriesResponse(.failure(error)))
@@ -241,6 +270,7 @@ public struct ItineraryFeature {
                     do {
                         let entries = try await budgetEntryRepository.fetchAllEntries(tripID)
                         await send(.entriesResponse(.success(entries)))
+                        await offlineCacheClient.saveCodable(entries, key: OfflineCacheKey.budgetEntries(tripID))
                     } catch {
                         FlowneyLog.error("fetchAllEntries failed: \(error)", category: .itinerary)
                         await send(.entriesResponse(.failure(error)))
@@ -258,7 +288,9 @@ public struct ItineraryFeature {
 
             case let .daysResponse(.failure(error)):
                 state.isLoading = false
-                state.errorMessage = error.localizedDescription
+                if state.days.isEmpty {
+                    state.errorMessage = error.localizedDescription
+                }
                 return .none
 
             case let .itemsResponse(.success(items)):
@@ -270,9 +302,18 @@ public struct ItineraryFeature {
                     loadCachedRoutes(days: state.days, itemsByDay: state.itemsByDay)
                 )
 
+            case let .cachedItemsLoaded(items):
+                // 캐시는 표시만 한다 — 국가코드 보정 같은 서버 쓰기는 라이브 응답에서만 한다
+                state.isLoading = false
+                state.itemsByDay = Dictionary(grouping: items, by: \.dayId)
+                    .mapValues { IdentifiedArrayOf(uniqueElements: $0.sorted { $0.sortOrder < $1.sortOrder }) }
+                return loadCachedRoutes(days: state.days, itemsByDay: state.itemsByDay)
+
             case let .itemsResponse(.failure(error)):
                 state.isLoading = false
-                state.errorMessage = error.localizedDescription
+                if state.itemsByDay.isEmpty {
+                    state.errorMessage = error.localizedDescription
+                }
                 return .none
 
             case let .countriesResponse(.success(countries)):
@@ -291,6 +332,12 @@ public struct ItineraryFeature {
 
             case let .weatherResponse(dayID, .success(weather)):
                 state.weatherByDay[dayID] = weather
+                if let tripID = state.trip?.id {
+                    let weatherByDay = state.weatherByDay
+                    return .run { _ in
+                        await offlineCacheClient.saveCodable(weatherByDay, key: OfflineCacheKey.weather(tripID))
+                    }
+                }
                 return .none
 
             case .weatherResponse(_, .failure):

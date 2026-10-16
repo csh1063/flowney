@@ -41,6 +41,8 @@ public struct RootView: View {
     @State private var shouldAutoOpenShareInbox = false
     @State private var addItemFlowStore: StoreOf<AddItemFlowFeature>?
     @State private var pendingAddItemCompletion: (() -> Void)?
+    @State private var isViewingOffline = false
+    @State private var isReconnectPromptDismissed = false
     @Environment(\.scenePhase) private var scenePhase
 
     public init(store: StoreOf<AppFeature>) {
@@ -52,10 +54,20 @@ public struct RootView: View {
             .tint(FlowneyTheme.accent)
             .font(FlowneyFont.body)
             .preferredColorScheme((AppearanceMode(rawValue: appearanceModeRaw) ?? .system).colorScheme)
-            .onAppear { store.send(.auth(.onAppear)) }
+            .onAppear {
+                store.send(.auth(.onAppear))
+                store.send(.networkMonitorStarted)
+            }
             .onChange(of: scenePhase) { _, newPhase in
                 if newPhase == .active {
                     consumeAutoOpenShareInboxFlagIfNeeded()
+                }
+            }
+            .onChange(of: store.isOffline) { _, isOffline in
+                // 온라인 복귀는 자동 전환하지 않고 팝업에서 사용자가 고른다
+                if isOffline {
+                    isViewingOffline = true
+                    isReconnectPromptDismissed = false
                 }
             }
     }
@@ -67,6 +79,33 @@ public struct RootView: View {
         if Self.tempSampleDataPreviewBypass {
             mainTabScaffold
                 .onAppear { seedTempSampleDataIfNeeded() }
+        } else if isViewingOffline {
+            Group {
+                if currentTrip != nil {
+                    mainTabScaffold
+                } else {
+                    OfflineTripPickerView { trip in
+                        selectTrip(trip)
+                    }
+                }
+            }
+            .environment(\.isOfflineViewing, true)
+            // 지도 탭은 일정 시트가 항상 떠 있어서 시스템 alert/sheet가 안 뜬다 — 화면 위 오버레이로 묻는다
+            .overlay(alignment: .top) {
+                if !store.isOffline {
+                    if isReconnectPromptDismissed {
+                        Button("온라인으로 전환", systemImage: "wifi", action: switchToOnline)
+                            .font(FlowneyFont.captionEmphasis)
+                            .foregroundStyle(FlowneyTheme.accentLabel)
+                            .padding(.horizontal, FlowneySpacing.md)
+                            .padding(.vertical, FlowneySpacing.sm)
+                            .background(FlowneyTheme.accent, in: Capsule())
+                            .buttonStyle(.plain)
+                    } else {
+                        reconnectPrompt
+                    }
+                }
+            }
         } else if store.auth.isCheckingSession {
             SplashView()
         } else if store.auth.isSignedIn {
@@ -232,21 +271,33 @@ public struct RootView: View {
     private var mapTab: some View {
         ItineraryView(store: itineraryStore) { onTripSelected in
             AnyView(
-                NavigationStack {
-                    TripListView(store: store.scope(state: \.tripList, action: \.tripList)) { trip in
-                        selectTrip(trip)
-                        onTripSelected()
-                    }
+                tripPicker {
+                    onTripSelected()
                 }
             )
         }
     }
 
     private var tripLoaderSheet: some View {
-        NavigationStack {
-            TripListView(store: store.scope(state: \.tripList, action: \.tripList)) { trip in
+        tripPicker {
+            isTripLoaderPresented = false
+        }
+    }
+
+    /// 오프라인 열람 중에는 저장해둔 여행만 고를 수 있게 한다
+    @ViewBuilder
+    private func tripPicker(onSelected: @escaping () -> Void) -> some View {
+        if isViewingOffline {
+            OfflineTripPickerView { trip in
                 selectTrip(trip)
-                isTripLoaderPresented = false
+                onSelected()
+            }
+        } else {
+            NavigationStack {
+                TripListView(store: store.scope(state: \.tripList, action: \.tripList)) { trip in
+                    selectTrip(trip)
+                    onSelected()
+                }
             }
         }
     }
@@ -262,6 +313,30 @@ public struct RootView: View {
         guard PendingShareAutoOpenFlag.consumeShouldAutoOpen() else { return }
         selectedTab = .myPage
         shouldAutoOpenShareInbox = true
+    }
+
+    private var reconnectPrompt: some View {
+        VStack(alignment: .leading, spacing: FlowneySpacing.md) {
+            Label("인터넷에 다시 연결됐어요", systemImage: "wifi")
+                .font(FlowneyFont.bodyEmphasis)
+                .foregroundStyle(FlowneyTheme.textPrimary)
+            HStack(spacing: FlowneySpacing.sm) {
+                Button("오프라인 유지") { isReconnectPromptDismissed = true }
+                    .font(FlowneyFont.bodyEmphasis)
+                    .foregroundStyle(FlowneyTheme.textSecondary)
+                    .frame(maxWidth: .infinity)
+                Button("온라인 모드", action: switchToOnline)
+                    .buttonStyle(.flowneyPrimary)
+            }
+        }
+        .flowneyCard()
+        .shadow(color: .black.opacity(0.15), radius: 12, y: 4)
+        .padding(.horizontal, FlowneySpacing.lg)
+    }
+
+    /// 로그인돼 있으면 바로 메인으로, 아니면 아래 분기에서 로그인 화면이 뜬다
+    private func switchToOnline() {
+        isViewingOffline = false
     }
 
     private func selectTrip(_ trip: Trip) {

@@ -1,5 +1,6 @@
 import APIClient
 import ComposableArchitecture
+import DesignSystem
 import Models
 import SwiftUI
 
@@ -10,7 +11,10 @@ public struct TripManagementMenuButton: View {
 
     @State private var editStore: StoreOf<TripEditFeature>?
     @State private var shareStore: StoreOf<TripShareFeature>?
+    @State private var isSavingOffline = false
+    @State private var offlineSaveMessage: String?
     @Dependency(\.tripsRepository) private var tripsRepository
+    @Environment(\.isOfflineViewing) private var isOfflineViewing
 
     public init(
         trip: Trip,
@@ -31,22 +35,40 @@ public struct TripManagementMenuButton: View {
                     Label("여행 목록", systemImage: "list.bullet")
                 }
 
-                Button {
-                    openEdit()
-                } label: {
-                    Label("여행 수정", systemImage: "pencil")
-                }
-
-                Button {
-                    shareStore = Store(initialState: TripShareFeature.State(tripId: trip.id)) {
-                        TripShareFeature()
+                if !isOfflineViewing {
+                    Button {
+                        openEdit()
+                    } label: {
+                        Label("여행 수정", systemImage: "pencil")
                     }
-                } label: {
-                    Label("여행 공유", systemImage: "square.and.arrow.up")
+
+                    Button {
+                        shareStore = Store(initialState: TripShareFeature.State(tripId: trip.id)) {
+                            TripShareFeature()
+                        }
+                    } label: {
+                        Label("여행 공유", systemImage: "square.and.arrow.up")
+                    }
+
+                    Button {
+                        saveOffline()
+                    } label: {
+                        Label(isSavingOffline ? "저장 중…" : "오프라인 저장", systemImage: "arrow.down.circle")
+                    }
+                    .disabled(isSavingOffline)
                 }
             }
         } label: {
             Image(systemName: "ellipsis.circle")
+        }
+        .alert(
+            offlineSaveMessage ?? "",
+            isPresented: Binding(
+                get: { offlineSaveMessage != nil },
+                set: { if !$0 { offlineSaveMessage = nil } }
+            )
+        ) {
+            Button("확인", role: .cancel) {}
         }
         .sheet(
             isPresented: Binding(
@@ -77,6 +99,19 @@ public struct TripManagementMenuButton: View {
             if let shareStore {
                 TripShareView(store: shareStore)
             }
+        }
+    }
+
+    private func saveOffline() {
+        isSavingOffline = true
+        Task {
+            do {
+                try await OfflineTripSaver().save(trip: trip)
+                offlineSaveMessage = "오프라인 저장 완료"
+            } catch {
+                offlineSaveMessage = "오프라인 저장 실패: \(error.localizedDescription)"
+            }
+            isSavingOffline = false
         }
     }
 

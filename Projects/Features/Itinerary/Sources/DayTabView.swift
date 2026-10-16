@@ -9,6 +9,7 @@ struct DayTabView: View {
     let columnWidth: CGFloat
     let onTapped: () -> Void
     let onItemDropped: (String) -> Void
+    @Environment(\.isOfflineViewing) private var isOfflineViewing
 
     var body: some View {
         Button(action: onTapped) {
@@ -31,7 +32,7 @@ struct DayTabView: View {
         .buttonStyle(.plain)
         .frame(width: columnWidth)
         .dropDestination(for: String.self) { droppedIDs, _ in
-            guard let itemID = droppedIDs.first else { return false }
+            guard !isOfflineViewing, let itemID = droppedIDs.first else { return false }
             onItemDropped(itemID)
             return true
         }

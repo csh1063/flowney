@@ -1,4 +1,5 @@
 import AddItem
+import APIClient
 import ComposableArchitecture
 import DesignSystem
 import Models
@@ -14,6 +15,9 @@ public struct ItineraryView: View {
     @State private var isTripListSheetPresented = false
     @State private var sheetDetent: PresentationDetent = .height(Self.expandedListHeight)
     @State private var bottomSafeAreaInset: CGFloat = 0
+    @State private var isSavingOffline = false
+    @State private var offlineSaveMessage: String?
+    @Environment(\.isOfflineViewing) private var isOfflineViewing
     let tripListSheetContent: (_ onTripSelected: @escaping () -> Void) -> AnyView
 
     private let dayColumnWidth: CGFloat = 64
@@ -62,6 +66,15 @@ public struct ItineraryView: View {
         } action: { newValue in
             bottomSafeAreaInset = newValue
         }
+        .alert(
+            offlineSaveMessage ?? "",
+            isPresented: Binding(
+                get: { offlineSaveMessage != nil },
+                set: { if !$0 { offlineSaveMessage = nil } }
+            )
+        ) {
+            Button("확인", role: .cancel) {}
+        }
         .overlay(alignment: .bottomTrailing) {
             if store.trip != nil {
                 controlBar
@@ -79,45 +92,49 @@ public struct ItineraryView: View {
         .flowneyLeadingTitle(store.trip?.name ?? "Flowney")
         .toolbar {
             if store.trip != nil {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        store.send(.addItemButtonTapped)
-                    } label: {
-                        Image(systemName: "plus")
+                if !isOfflineViewing {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
+                            store.send(.addItemButtonTapped)
+                        } label: {
+                            Image(systemName: "plus")
+                        }
                     }
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
-                        Section("데이터 갱신") {
-                            Button {
-                                store.send(.searchAllRoutesButtonTapped)
-                            } label: {
-                                Label(
-                                    store.isSearchingAllRoutes ? "탐색 중…" : "전체 경로 탐색",
-                                    systemImage: store.isSearchingAllRoutes ? "hourglass" : "point.topleft.down.curvedto.point.bottomright.up"
-                                )
-                            }
-                            .disabled(store.isSearchingAllRoutes || store.isRefreshingTodayRoute)
+                        if !isOfflineViewing {
+                            Section("데이터 갱신") {
+                                Button {
+                                    store.send(.searchAllRoutesButtonTapped)
+                                } label: {
+                                    Label(
+                                        store.isSearchingAllRoutes ? "탐색 중…" : "전체 경로 탐색",
+                                        systemImage: store.isSearchingAllRoutes ? "hourglass" : "point.topleft.down.curvedto.point.bottomright.up"
+                                    )
+                                }
+                                .disabled(store.isSearchingAllRoutes || store.isRefreshingTodayRoute)
 
-                            Button {
-                                store.send(.todayRouteRefreshButtonTapped)
-                            } label: {
-                                Label(
-                                    store.isRefreshingTodayRoute ? "갱신 중…" : "오늘 경로 갱신",
-                                    systemImage: store.isRefreshingTodayRoute ? "hourglass" : "arrow.clockwise"
-                                )
-                            }
-                            .disabled(store.isSearchingAllRoutes || store.isRefreshingTodayRoute)
+                                Button {
+                                    store.send(.todayRouteRefreshButtonTapped)
+                                } label: {
+                                    Label(
+                                        store.isRefreshingTodayRoute ? "갱신 중…" : "오늘 경로 갱신",
+                                        systemImage: store.isRefreshingTodayRoute ? "hourglass" : "arrow.clockwise"
+                                    )
+                                }
+                                .disabled(store.isSearchingAllRoutes || store.isRefreshingTodayRoute)
 
-                            Button {
-                                store.send(.refreshAllWeatherButtonTapped)
-                            } label: {
-                                Label(
-                                    store.isRefreshingWeather ? "갱신 중…" : "전체 날씨 갱신",
-                                    systemImage: store.isRefreshingWeather ? "hourglass" : "cloud.sun"
-                                )
+                                Button {
+                                    store.send(.refreshAllWeatherButtonTapped)
+                                } label: {
+                                    Label(
+                                        store.isRefreshingWeather ? "갱신 중…" : "전체 날씨 갱신",
+                                        systemImage: store.isRefreshingWeather ? "hourglass" : "cloud.sun"
+                                    )
+                                }
+                                .disabled(store.isRefreshingWeather)
                             }
-                            .disabled(store.isRefreshingWeather)
                         }
 
                         Section("여행 관리") {
@@ -127,24 +144,33 @@ public struct ItineraryView: View {
                                 Label("여행 목록", systemImage: "list.bullet")
                             }
 
-                            Button {
-                                if let trip = store.trip {
-                                    editStore = Store(initialState: TripEditFeature.State(editing: trip, countries: Array(store.countries))) {
-                                        TripEditFeature()
+                            if !isOfflineViewing {
+                                Button {
+                                    if let trip = store.trip {
+                                        editStore = Store(initialState: TripEditFeature.State(editing: trip, countries: Array(store.countries))) {
+                                            TripEditFeature()
+                                        }
                                     }
+                                } label: {
+                                    Label("여행 수정", systemImage: "pencil")
                                 }
-                            } label: {
-                                Label("여행 수정", systemImage: "pencil")
-                            }
 
-                            Button {
-                                if let trip = store.trip {
-                                    shareStore = Store(initialState: TripShareFeature.State(tripId: trip.id)) {
-                                        TripShareFeature()
+                                Button {
+                                    if let trip = store.trip {
+                                        shareStore = Store(initialState: TripShareFeature.State(tripId: trip.id)) {
+                                            TripShareFeature()
+                                        }
                                     }
+                                } label: {
+                                    Label("여행 공유", systemImage: "square.and.arrow.up")
                                 }
-                            } label: {
-                                Label("여행 공유", systemImage: "square.and.arrow.up")
+
+                                Button {
+                                    saveOffline()
+                                } label: {
+                                    Label(isSavingOffline ? "저장 중…" : "오프라인 저장", systemImage: "arrow.down.circle")
+                                }
+                                .disabled(isSavingOffline)
                             }
                         }
                     } label: {
@@ -312,6 +338,20 @@ public struct ItineraryView: View {
         return nil
     }
 
+    private func saveOffline() {
+        guard let trip = store.trip else { return }
+        isSavingOffline = true
+        Task {
+            do {
+                try await OfflineTripSaver().save(trip: trip)
+                offlineSaveMessage = "오프라인 저장 완료"
+            } catch {
+                offlineSaveMessage = "오프라인 저장 실패: \(error.localizedDescription)"
+            }
+            isSavingOffline = false
+        }
+    }
+
     private var controlBar: some View {
         HStack(spacing: 12) {
             Button {
@@ -414,21 +454,26 @@ public struct ItineraryView: View {
                             }
                             .id(item.id)
                             .draggable(item.id.uuidString)
+                            .moveDisabled(isOfflineViewing)
                             .swipeActions(edge: .leading) {
-                                Button {
-                                    store.send(.editItemTapped(item))
-                                } label: {
-                                    Label("수정", systemImage: "pencil")
+                                if !isOfflineViewing {
+                                    Button {
+                                        store.send(.editItemTapped(item))
+                                    } label: {
+                                        Label("수정", systemImage: "pencil")
+                                    }
+                                    .tint(.blue)
                                 }
-                                .tint(.blue)
                             }
                             .swipeActions(edge: .trailing) {
-                                Button(role: .destructive) {
-                                    if let index = store.selectedItems.index(id: item.id) {
-                                        store.send(.deleteItems(IndexSet(integer: index)))
+                                if !isOfflineViewing {
+                                    Button(role: .destructive) {
+                                        if let index = store.selectedItems.index(id: item.id) {
+                                            store.send(.deleteItems(IndexSet(integer: index)))
+                                        }
+                                    } label: {
+                                        Label("삭제", systemImage: "trash")
                                     }
-                                } label: {
-                                    Label("삭제", systemImage: "trash")
                                 }
                             }
                         }
@@ -459,7 +504,7 @@ public struct ItineraryView: View {
             ),
             titleVisibility: .visible
         ) {
-            if let item = store.warningPopupItem {
+            if let item = store.warningPopupItem, !isOfflineViewing {
                 Button("삭제", role: .destructive) {
                     store.send(.warningDeleteConfirmed(item.id))
                 }

@@ -11,6 +11,7 @@ public struct MemoView: View {
     @FocusState private var isComposeFocused: Bool
     @State private var isEditingComposeDueDate = false
     @State private var keyboardDismissGesture: UITapGestureRecognizer?
+    @Environment(\.isOfflineViewing) private var isOfflineViewing
 
     public init(store: StoreOf<MemoFeature>, onTripListRequested: @escaping () -> Void) {
         self.store = store
@@ -41,6 +42,7 @@ public struct MemoView: View {
                                     onDelete: { store.send(.deleteItem(item.id)) }
                                 )
                                 .listRowBackground(Color.clear)
+                                .moveDisabled(isOfflineViewing)
                             }
                             .onMove { source, destination in store.send(.itemsMoved(source, destination)) }
                         }
@@ -51,10 +53,12 @@ public struct MemoView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .layoutPriority(1)
-                composeBar
+                if !isOfflineViewing {
+                    composeBar
+                }
 //            }
         }
-        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: isComposeFocused ? 12 : 72) }
+        .safeAreaInset(edge: .bottom) { Color.clear.frame(height: isOfflineViewing ? 12 : (isComposeFocused ? 12 : 72)) }
         .background(FlowneyTheme.background)
         .flowneyLeadingTitle(store.trip.name)
         .toolbar {

@@ -12,6 +12,7 @@ public struct ItineraryListView: View {
     @State private var addItemFlowStore: StoreOf<AddItemFlowFeature>?
     @State private var pendingDeleteItemID: ItineraryItem.ID?
     @State private var revealedRowID: AnyHashable?
+    @Environment(\.isOfflineViewing) private var isOfflineViewing
 
     public init(
         store: StoreOf<ItineraryFeature>,
@@ -36,6 +37,7 @@ public struct ItineraryListView: View {
                 List {
                     ForEach(rows) { row in
                         rowContent(row)
+                            .moveDisabled(isOfflineViewing)
                     }
                     .onMove { source, destination in
                         handleMove(source, destination)
@@ -52,11 +54,13 @@ public struct ItineraryListView: View {
         .flowneyLeadingTitle(store.trip?.name ?? "리스트")
         .toolbar {
             if let trip = store.trip {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        store.send(.addItemButtonTapped)
-                    } label: {
-                        Image(systemName: "plus")
+                if !isOfflineViewing {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
+                            store.send(.addItemButtonTapped)
+                        } label: {
+                            Image(systemName: "plus")
+                        }
                     }
                 }
                 ToolbarItem(placement: .primaryAction) {
@@ -177,14 +181,16 @@ public struct ItineraryListView: View {
 
             Spacer()
 
-            Button {
-                store.send(.editDayLabelButtonTapped(day.id))
-            } label: {
-                Image(systemName: "pencil")
-                    .font(.system(size: 13))
-                    .foregroundStyle(FlowneyTheme.textSecondary)
+            if !isOfflineViewing {
+                Button {
+                    store.send(.editDayLabelButtonTapped(day.id))
+                } label: {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 13))
+                        .foregroundStyle(FlowneyTheme.textSecondary)
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
         .padding(.top, FlowneySpacing.sm)
         .listRowInsets(EdgeInsets(top: 0, leading: FlowneySpacing.lg, bottom: 0, trailing: FlowneySpacing.lg))

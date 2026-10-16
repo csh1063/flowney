@@ -198,6 +198,7 @@ public struct BudgetFeature {
     @Dependency(\.itineraryRepository) var itineraryRepository
     @Dependency(\.budgetEntryRepository) var budgetEntryRepository
     @Dependency(\.tripsRepository) var tripsRepository
+    @Dependency(\.offlineCacheClient) var offlineCacheClient
 
     public init() {}
 
@@ -211,25 +212,37 @@ public struct BudgetFeature {
                 let tripID = state.trip.id
                 return .merge(
                     .run { send in
+                        if let cached = await offlineCacheClient.loadCodable([ItineraryItem].self, key: OfflineCacheKey.items(tripID)) {
+                            await send(.itemsResponse(.success(cached)))
+                        }
                         do {
                             let items = try await itineraryRepository.fetchAllItems(tripID)
                             await send(.itemsResponse(.success(items)))
+                            await offlineCacheClient.saveCodable(items, key: OfflineCacheKey.items(tripID))
                         } catch {
                             await send(.itemsResponse(.failure(error)))
                         }
                     },
                     .run { send in
+                        if let cached = await offlineCacheClient.loadCodable([BudgetEntry].self, key: OfflineCacheKey.budgetEntries(tripID)) {
+                            await send(.entriesResponse(.success(cached)))
+                        }
                         do {
                             let entries = try await budgetEntryRepository.fetchAllEntries(tripID)
                             await send(.entriesResponse(.success(entries)))
+                            await offlineCacheClient.saveCodable(entries, key: OfflineCacheKey.budgetEntries(tripID))
                         } catch {
                             await send(.entriesResponse(.failure(error)))
                         }
                     },
                     .run { send in
+                        if let cached = await offlineCacheClient.loadCodable([TripDay].self, key: OfflineCacheKey.days(tripID)) {
+                            await send(.daysResponse(.success(cached)))
+                        }
                         do {
                             let days = try await tripsRepository.fetchDays(tripID)
                             await send(.daysResponse(.success(days)))
+                            await offlineCacheClient.saveCodable(days, key: OfflineCacheKey.days(tripID))
                         } catch {
                             await send(.daysResponse(.failure(error)))
                         }
@@ -243,7 +256,9 @@ public struct BudgetFeature {
 
             case let .itemsResponse(.failure(error)):
                 state.isLoading = false
-                state.errorMessage = error.localizedDescription
+                if state.items.isEmpty {
+                    state.errorMessage = error.localizedDescription
+                }
                 return .none
 
             case let .entriesResponse(.success(entries)):
@@ -252,7 +267,9 @@ public struct BudgetFeature {
                 return .none
 
             case let .entriesResponse(.failure(error)):
-                state.errorMessage = error.localizedDescription
+                if state.entries.isEmpty {
+                    state.errorMessage = error.localizedDescription
+                }
                 return .none
 
             case let .daysResponse(.success(days)):
@@ -260,7 +277,9 @@ public struct BudgetFeature {
                 return .none
 
             case let .daysResponse(.failure(error)):
-                state.errorMessage = error.localizedDescription
+                if state.days.isEmpty {
+                    state.errorMessage = error.localizedDescription
+                }
                 return .none
 
             case let .entrySaved(entry):

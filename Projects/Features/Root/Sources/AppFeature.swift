@@ -1,3 +1,4 @@
+import APIClient
 import AuthFeature
 import ComposableArchitecture
 import Foundation
@@ -9,6 +10,7 @@ public struct AppFeature {
     public struct State: Equatable {
         public var auth = AuthFeature.State()
         public var tripList = TripListFeature.State()
+        public var isOffline = false
 
         public init() {}
     }
@@ -16,7 +18,15 @@ public struct AppFeature {
     public enum Action {
         case auth(AuthFeature.Action)
         case tripList(TripListFeature.Action)
+        case networkMonitorStarted
+        case connectivityChanged(Bool)
     }
+
+    private enum CancelID {
+        case networkMonitor
+    }
+
+    @Dependency(\.networkMonitorClient) var networkMonitorClient
 
     public init() {}
 
@@ -26,6 +36,24 @@ public struct AppFeature {
         }
         Scope(state: \.tripList, action: \.tripList) {
             TripListFeature()
+        }
+        Reduce { state, action in
+            switch action {
+            case .networkMonitorStarted:
+                return .run { send in
+                    for await isConnected in networkMonitorClient.connectivityChanges() {
+                        await send(.connectivityChanged(isConnected))
+                    }
+                }
+                .cancellable(id: CancelID.networkMonitor, cancelInFlight: true)
+
+            case let .connectivityChanged(isConnected):
+                state.isOffline = !isConnected
+                return .none
+
+            case .auth, .tripList:
+                return .none
+            }
         }
     }
 }

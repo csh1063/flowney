@@ -9,6 +9,7 @@ public struct BudgetView: View {
     let onTripListRequested: () -> Void
     @State private var addEntryStore: StoreOf<AddBudgetEntryFeature>?
     @State private var revealedRowID: AnyHashable?
+    @Environment(\.isOfflineViewing) private var isOfflineViewing
 
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -158,15 +159,17 @@ public struct BudgetView: View {
         .background(FlowneyTheme.background)
         .flowneyLeadingTitle(store.trip.name)
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    addEntryStore = Store(
-                        initialState: AddBudgetEntryFeature.State(tripID: store.trip.id, items: store.items, days: store.days)
-                    ) {
-                        AddBudgetEntryFeature()
+            if !isOfflineViewing {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        addEntryStore = Store(
+                            initialState: AddBudgetEntryFeature.State(tripID: store.trip.id, items: store.items, days: store.days)
+                        ) {
+                            AddBudgetEntryFeature()
+                        }
+                    } label: {
+                        Image(systemName: "plus")
                     }
-                } label: {
-                    Image(systemName: "plus")
                 }
             }
             ToolbarItem(placement: .primaryAction) {
@@ -234,6 +237,7 @@ public struct BudgetView: View {
             revealedID: $revealedRowID,
             onDelete: { store.send(.deleteEntryButtonTapped(entry.id)) },
             onTap: {
+                guard !isOfflineViewing else { return }
                 addEntryStore = Store(
                     initialState: AddBudgetEntryFeature.State(
                         editing: entry,

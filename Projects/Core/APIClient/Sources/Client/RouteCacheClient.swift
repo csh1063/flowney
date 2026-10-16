@@ -102,12 +102,22 @@ final class CachedRouteLegRecord {
 
 enum RouteCacheContainer {
     static let shared: ModelContainer = {
-        let schema = Schema([CachedRouteLegRecord.self])
-        if let container = try? ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema)]) {
+        let schema = Schema([CachedRouteLegRecord.self, CachedEntityRecord.self])
+        let configuration = ModelConfiguration(schema: schema)
+        do {
+            return try ModelContainer(for: schema, configurations: [configuration])
+        } catch {
+            FlowneyLog.error("cache store open failed, recreating: \(error)", category: .app)
+        }
+        // 캐시 전용 스토어라 깨졌으면 지우고 디스크에 다시 만든다 — in-memory로 가면
+        // 오프라인 저장 여행이 앱 재시작 때 조용히 사라진다.
+        for suffix in ["", "-shm", "-wal"] {
+            try? FileManager.default.removeItem(at: URL(fileURLWithPath: configuration.url.path + suffix))
+        }
+        if let container = try? ModelContainer(for: schema, configurations: [configuration]) {
             return container
         }
-        // On-disk store failed (schema mismatch, corrupted store, etc). Fall back to an
-        // in-memory container so route caching degrades gracefully instead of crashing the app.
+        FlowneyLog.error("cache store recreate failed, falling back to in-memory", category: .app)
         guard let inMemory = try? ModelContainer(
             for: schema,
             configurations: [ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)]

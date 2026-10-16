@@ -1,6 +1,6 @@
 import Foundation
 
-public struct DayWeather: Equatable, Sendable {
+public struct DayWeather: Codable, Equatable, Sendable {
     public var tmax: Int
     public var tmin: Int
     public var pop: Int
