@@ -52,6 +52,7 @@ public struct MemoFeature {
     @Dependency(\.memoItemRepository) var memoItemRepository
     @Dependency(\.notificationScheduler) var notificationScheduler
     @Dependency(\.uuid) var uuid
+    @Dependency(\.offlineCacheClient) var offlineCacheClient
 
     public init() {}
 
@@ -67,9 +68,13 @@ public struct MemoFeature {
                 let tripID = state.trip.id
                 return .merge(
                     .run { send in
+                        if let cached = await offlineCacheClient.loadCodable([MemoItem].self, key: OfflineCacheKey.memoItems(tripID)) {
+                            await send(.itemsResponse(.success(cached)))
+                        }
                         do {
                             let items = try await memoItemRepository.fetchAllItems(tripID)
                             await send(.itemsResponse(.success(items)))
+                            await offlineCacheClient.saveCodable(items, key: OfflineCacheKey.memoItems(tripID))
                         } catch {
                             await send(.itemsResponse(.failure(error)))
                         }
@@ -87,7 +92,9 @@ public struct MemoFeature {
 
             case let .itemsResponse(.failure(error)):
                 state.isLoading = false
-                state.errorMessage = error.localizedDescription
+                if state.items.isEmpty {
+                    state.errorMessage = error.localizedDescription
+                }
                 return .none
 
             case .notificationAuthorizationResponse:

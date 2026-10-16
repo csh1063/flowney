@@ -11,6 +11,7 @@ public struct SwipeToDeleteCard<Content: View>: View {
     @State private var committedOffset: CGFloat = 0
     @State private var hasTriggeredAction = false
     @GestureState private var dragTranslation: CGFloat = 0
+    @Environment(\.isOfflineViewing) private var isOfflineViewing
 
     private let actionWidth: CGFloat = 76
 
@@ -147,7 +148,9 @@ public struct SwipeToDeleteCard<Content: View>: View {
                                 }
                             }
                             revealedID = committedOffset == 0 ? nil : id
-                        }
+                        },
+                    // 오프라인 열람 중에는 수정/삭제 스와이프를 막는다
+                    including: isOfflineViewing ? .subviews : .all
                 )
         }
         .clipShape(RoundedRectangle(cornerRadius: FlowneyRadius.lg, style: .continuous))

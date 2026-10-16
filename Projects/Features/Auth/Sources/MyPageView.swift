@@ -15,6 +15,7 @@ public struct MyPageView: View {
     @State private var isAccountInfoPresented = false
     @State private var shareInboxStore: StoreOf<ShareInboxFeature>?
     @State private var isAppearanceSheetPresented = false
+    @State private var isOfflineTripsManagerPresented = false
     @AppStorage(AppearanceMode.storageKey) private var appearanceModeRaw: String = AppearanceMode.system.rawValue
 
     public init(
@@ -73,6 +74,23 @@ public struct MyPageView: View {
                                 .padding(.vertical, 2)
                                 .background(FlowneyTheme.accent, in: Capsule())
                         }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(FlowneyTheme.textSecondary)
+                    }
+                    .flowneyCard()
+                }
+                .buttonStyle(.plain)
+                .flowneyCardListRow()
+
+                Button {
+                    isOfflineTripsManagerPresented = true
+                } label: {
+                    HStack {
+                        Text("오프라인 여행 관리")
+                            .font(FlowneyFont.body)
+                            .foregroundStyle(FlowneyTheme.textPrimary)
                         Spacer()
                         Image(systemName: "chevron.right")
                             .font(.caption)
@@ -149,6 +167,11 @@ public struct MyPageView: View {
                     .onAppear { isSubpagePresented = true }
                     .onDisappear { isSubpagePresented = false }
             }
+        }
+        .navigationDestination(isPresented: $isOfflineTripsManagerPresented) {
+            OfflineTripsManagerView()
+                .onAppear { isSubpagePresented = true }
+                .onDisappear { isSubpagePresented = false }
         }
         .onAppear { applyAutoOpenShareInboxIfNeeded() }
         .onChange(of: autoOpenShareInbox) { _, _ in applyAutoOpenShareInboxIfNeeded() }

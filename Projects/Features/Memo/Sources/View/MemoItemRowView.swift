@@ -7,6 +7,7 @@ struct MemoItemRowView: View {
     let onToggleDone: () -> Void
     let onDueDateTapped: () -> Void
     let onDelete: () -> Void
+    @Environment(\.isOfflineViewing) private var isOfflineViewing
 
     static let dueDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -25,6 +26,7 @@ struct MemoItemRowView: View {
                         .frame(width: 32, height: 32)
                 }
                 .buttonStyle(.plain)
+                .disabled(isOfflineViewing)
             } else {
                 Image(systemName: "text.alignleft")
                     .foregroundStyle(FlowneyTheme.textSecondary)
@@ -45,12 +47,15 @@ struct MemoItemRowView: View {
                         .foregroundStyle(FlowneyTheme.textSecondary)
                 }
                 .buttonStyle(.plain)
+                .disabled(isOfflineViewing)
             }
         }
 //        .padding(.vertical, FlowneySpacing.xs)
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            Button(role: .destructive, action: onDelete) {
-                Label("삭제", systemImage: "trash")
+            if !isOfflineViewing {
+                Button(role: .destructive, action: onDelete) {
+                    Label("삭제", systemImage: "trash")
+                }
             }
         }
     }
